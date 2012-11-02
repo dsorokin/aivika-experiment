@@ -32,6 +32,8 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation
 import Simulation.Aivika.Dynamics.Signal
+import Simulation.Aivika.Dynamics.EventQueue
+import Simulation.Aivika.Dynamics.Base
 
 -- | Defines the 'View' that saves the simulation results
 -- in the CSV file(s).
@@ -170,7 +172,12 @@ simulateTable st expdata =
             liftIO $ hPutStr h separator
           liftIO $ hPutStr h $ providerName provider
      liftIO $ hPutStrLn h ""
-     handleSignal_ (experimentMixedSignal expdata providers) $ \t ->
+     t <- time
+     enqueue (experimentQueue expdata) t $
+       -- we must subscribe through the event queue;
+       -- otherwise, we will loose a signal in the start time,
+       -- because the handleSignal_ function checks the event queue
+       handleSignal_ (experimentMixedSignal expdata providers) $ \t ->
        do p <- predicate
           when p $
             do forM_ (zip [0..] input) $ \(column, input) ->  -- write the row

@@ -30,6 +30,8 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation
 import Simulation.Aivika.Dynamics.Signal
+import Simulation.Aivika.Dynamics.EventQueue
+import Simulation.Aivika.Dynamics.Base
 
 -- | Defines the 'View' that shows the last values of the simulation
 -- variables.
@@ -104,12 +106,18 @@ simulateLastValues st expdata =
                         " as a string: simulateLastValues"
              Just input -> (providerName provider, input)
      i <- liftSimulation simulationIndex
-     handleSignal (experimentSignalInStopTime expdata) $ \t ->
+     t <- time
+     enqueue (experimentQueue expdata) t $
+       -- we must subscribe through the event queue;
+       -- otherwise, we will loose a signal in the start time,
+       -- because the handleSignal_ function checks the event queue
+       handleSignal_ (experimentSignalInStopTime expdata) $ \t ->
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM input $ \(name, input) ->
             do x <- input
                return (name, x)
           liftIO $ writeIORef r output
+     return $ return ()
      
 -- | Get the HTML code.     
 lastValueHtml :: LastValueViewState -> Int -> HtmlWriter ()     
