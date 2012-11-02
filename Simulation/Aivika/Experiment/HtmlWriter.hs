@@ -13,13 +13,19 @@
 module Simulation.Aivika.Experiment.HtmlWriter 
        (HtmlWriter,
         runHtmlWriter,
+        composeHtml,
         writeHtml,
         writeHtmlText,
-        composeHtml,
+        writeHtmlLink,
+        writeHtmlRelativeLink,
         encodeHtmlText) where
 
 import Control.Monad
 import Control.Monad.Trans
+
+import System.FilePath
+
+import Network.URI
 
 -- | It writes fast an HTML code.
 newtype HtmlWriter a = 
@@ -57,6 +63,27 @@ composeHtml :: ShowS -> HtmlWriter ()
 composeHtml g =
   HtmlWriter $ \f -> return ((), f . g)
 
+-- | Write the HTML link by the specified path and text.
+writeHtmlLink :: FilePath -> String -> HtmlWriter ()
+writeHtmlLink path text =
+  do writeHtml "<a href=\""
+     writeHtml $ escapeURIString isUnescapedInURI path
+     writeHtml "\">"
+     writeHtmlText text
+     writeHtml "</a>"
+         
+-- | Write the HTML link using the specified relative path (the
+-- first argument relative to the second) and text (the third argument). 
+writeHtmlRelativeLink :: FilePath -> FilePath -> String -> HtmlWriter ()
+writeHtmlRelativeLink path1 path2 text =
+  do writeHtml "<a href=\""
+     writeHtml $
+       escapeURIString isUnescapedInURI $
+       makeRelative path1 path2
+     writeHtml "\">"
+     writeHtmlText text
+     writeHtml "</a>"
+     
 -- | Escape special HTML characters in the 'String'.
 -- It is based on one function from package Web-Encodings,
 -- which is licensed under BSD3 but obsolete now.

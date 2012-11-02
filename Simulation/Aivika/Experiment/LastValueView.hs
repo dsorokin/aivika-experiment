@@ -12,19 +12,8 @@
 --
 
 module Simulation.Aivika.Experiment.LastValueView 
-       (LastValueView,
-        outputLastValues,
-        setLastValueTitle,
-        getLastValueTitle,
-        setLastValueRunTitle,
-        getLastValueRunTitle,
-        setLastValueDescription,
-        getLastValueDescription,
-        setLastValueFormatter,
-        getLastValueFormatter,
-        addLastValueSeries,
-        setLastValueSeries,
-        getLastValueSeries) where
+       (LastValueView(..),
+        initLastValueView) where
 
 import Control.Monad
 import Control.Monad.State
@@ -45,24 +34,40 @@ import Simulation.Aivika.Dynamics.Signal
 -- | Defines the 'View' that shows the last values of the simulation
 -- variables.
 data LastValueView =
-  LastValueView { lvalTitle       :: String,
-                  lvalRunTitle    :: String,
-                  lvalDescription :: String,
-                  lvalFormatter   :: ShowS,
-                  lvalSeries      :: [String] }
+  LastValueView { lastValueTitle       :: String,
+                  -- ^ The title for the view.
+                  lastValueRunTitle    :: String,
+                  -- ^ The run title for the view. It may include
+                  -- special variables @$RUN_INDEX@, @$RUN_COUNT@ and 
+                  -- @$TITLE@.
+                  --
+                  -- An example is 
+                  --
+                  -- @
+                  --   lastValueRunTitle = \"$TITLE / Run $RUN_INDEX of $RUN_COUNT\"
+                  -- @
+                  lastValueDescription :: String,
+                  -- ^ The description for the view.
+                  lastValueFormatter   :: ShowS,
+                  -- ^ It transforms data before they will be shown.
+                  lastValueSeries      :: [String] 
+                  -- ^ It contains the labels of the observed series.
+                }
   
-instance View LastValueView where
+-- | This is an initial view.
+initLastValueView :: LastValueView
+initLastValueView =  
+  LastValueView { lastValueTitle       = "The Last Values",
+                  lastValueRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
+                  lastValueDescription = [],
+                  lastValueFormatter   = id,
+                  lastValueSeries      = [] }
   
-  initView = 
-    LastValueView { lvalTitle       = "The Last Values",
-                    lvalRunTitle    = "$TITLE / $RUN_INDEX of $RUN_COUNT",
-                    lvalDescription = [],
-                    lvalFormatter   = id,
-                    lvalSeries      = [] }
+instance View LastValueView where  
   
-  viewGenerator v = 
-    let reporter task filepath =
-          do st <- newLastValues v task
+  outputView v = 
+    let reporter exp dir =
+          do st <- newLastValues v exp
              return Reporter { reporterInitialise = return (),
                                reporterFinalise   = return (),
                                reporterSimulate   = simulateLastValues st,
@@ -70,86 +75,26 @@ instance View LastValueView where
                                reporterHtml       = lastValueHtml st }
     in Generator { generateReporter = reporter }
   
--- | Output the last values.
-outputLastValues :: State LastValueView () -> Experiment ()
-outputLastValues = outputView
-  
--- | Set the title for the Last Value view.
-setLastValueTitle :: String -> State LastValueView ()
-setLastValueTitle title =
-  state (\lval -> ((), lval { lvalTitle = title }))
-  
--- | Set the run title for the Last Value view. It may include
--- special variables @$RUN_INDEX@, @$RUN_COUNT@ and @$TITLE@.
-setLastValueRunTitle :: String -> State LastValueView ()
-setLastValueRunTitle title =
-  state (\lval -> ((), lval { lvalRunTitle = title }))
-  
--- | Set the description for the Last Value view.
-setLastValueDescription :: String -> State LastValueView ()
-setLastValueDescription description =
-  state (\lval -> ((), lval { lvalDescription = description }))
-  
--- | Set the formatter for the Last Value view.
-setLastValueFormatter :: ShowS -> State LastValueView ()
-setLastValueFormatter formatter =
-  state (\lval -> ((), lval { lvalFormatter = formatter }))
-  
--- | Add a new series with the specified label to the view.
-addLastValueSeries :: String -> State LastValueView ()
-addLastValueSeries label =
-  state (\lval -> ((), lval { lvalSeries = label : lvalSeries lval }))
-  
--- | Set the series with the specified label for the view.
-setLastValueSeries :: [String] -> State LastValueView ()
-setLastValueSeries labels =
-  state (\lval -> ((), lval { lvalSeries = labels }))
-  
--- | Get the title for the Last Value view.
-getLastValueTitle :: State LastValueView String
-getLastValueTitle =
-  state (\lval -> (lvalTitle lval, lval))
-  
--- | Get the run title for the Last Value view.
-getLastValueRunTitle :: State LastValueView String
-getLastValueRunTitle =
-  state (\lval -> (lvalRunTitle lval, lval))
-  
--- | Get the description for the Last Value view.
-getLastValueDescription :: State LastValueView String
-getLastValueDescription =
-  state (\lval -> (lvalDescription lval, lval))
-  
--- | Get the formatter for the Last Value view.
-getLastValueFormatter :: State LastValueView ShowS
-getLastValueFormatter =
-  state (\lval -> (lvalFormatter lval, lval))
-  
--- | Get the series for the Last Value view.
-getLastValueSeries :: State LastValueView [String]
-getLastValueSeries =
-  state (\lval -> (reverse $ lvalSeries lval, lval))
-  
--- | The state of the Last Value view.
+-- | The state of the view.
 data LastValueViewState =
-  LastValueViewState { lvalView  :: LastValueView,
-                       lvalTask  :: Task,
-                       lvalMap   :: M.Map Int (IORef [(String, String)]) }
+  LastValueViewState { lastValueView       :: LastValueView,
+                       lastValueExperiment :: Experiment,
+                       lastValueMap        :: M.Map Int (IORef [(String, String)]) }
   
--- | Create a new state of the Last Value view.
-newLastValues :: LastValueView -> Task -> IO LastValueViewState
-newLastValues view task =
-  do let n = taskRunCount task
+-- | Create a new state of the view.
+newLastValues :: LastValueView -> Experiment -> IO LastValueViewState
+newLastValues view exp =
+  do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
      let m = M.fromList $ zip [0..(n - 1)] rs
-     return LastValueViewState { lvalView = view,
-                                 lvalTask = task,
-                                 lvalMap  = m }
+     return LastValueViewState { lastValueView       = view,
+                                 lastValueExperiment = exp,
+                                 lastValueMap        = m }
        
 -- | Get the last values during the simulation.
 simulateLastValues :: LastValueViewState -> ExperimentData -> Dynamics (Dynamics ())
 simulateLastValues st expdata =
-  do let labels = reverse $ lvalSeries $ lvalView st
+  do let labels = lastValueSeries $ lastValueView st
          input  =
            flip map (experimentSeriesProviders expdata labels) $ \provider ->
            case providerToString provider of
@@ -160,7 +105,7 @@ simulateLastValues st expdata =
              Just input -> (providerName provider, input)
      i <- liftSimulation simulationIndex
      handleSignal (experimentSignalInStopTime expdata) $ \t ->
-       do let r = fromJust $ M.lookup (i - 1) (lvalMap st)
+       do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM input $ \(name, input) ->
             do x <- input
                return (name, x)
@@ -169,7 +114,7 @@ simulateLastValues st expdata =
 -- | Get the HTML code.     
 lastValueHtml :: LastValueViewState -> Int -> HtmlWriter ()     
 lastValueHtml st index =
-  let n = taskRunCount $ lvalTask st
+  let n = experimentRunCount $ lastValueExperiment st
   in if n == 1
      then lastValueHtmlSingle st index
      else lastValueHtmlMultiple st index
@@ -178,38 +123,38 @@ lastValueHtml st index =
 lastValueHtmlSingle :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueHtmlSingle st index =
   do header st index
-     let r = fromJust $ M.lookup 0 (lvalMap st)
+     let r = fromJust $ M.lookup 0 (lastValueMap st)
      pairs <- liftIO $ readIORef r
      forM_ pairs $ \pair ->
-       formatPair pair (lvalFormatter $ lvalView st)
+       formatPair pair (lastValueFormatter $ lastValueView st)
 
 -- | Get the HTML code for multiple runs
 lastValueHtmlMultiple :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueHtmlMultiple st index =
   do header st index
-     let n = taskRunCount $ lvalTask st
+     let n = experimentRunCount $ lastValueExperiment st
      forM_ [0..(n - 1)] $ \i ->
        do let subtitle = 
                 replace "$RUN_INDEX" (show $ i + 1) $
                 replace "$RUN_COUNT" (show n) $
-                replace "$TITLE" (lvalTitle $ lvalView st) $
-                (lvalRunTitle $ lvalView st)
+                replace "$TITLE" (lastValueTitle $ lastValueView st) $
+                (lastValueRunTitle $ lastValueView st)
           writeHtml "<h4>"
           writeHtmlText subtitle
           writeHtml "</h4>"
-          let r = fromJust $ M.lookup i (lvalMap st)
+          let r = fromJust $ M.lookup i (lastValueMap st)
           pairs <- liftIO $ readIORef r
           forM_ pairs $ \pair ->
-            formatPair pair (lvalFormatter $ lvalView st)
+            formatPair pair (lastValueFormatter $ lastValueView st)
 
 header :: LastValueViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtml "<h3 id=\"id"
      writeHtml $ show index
      writeHtml "\">"
-     writeHtmlText $ (lvalTitle $ lvalView st)
+     writeHtmlText $ (lastValueTitle $ lastValueView st)
      writeHtml "</h3>"
-     let description = (lvalDescription $ lvalView st)
+     let description = (lastValueDescription $ lastValueView st)
      unless (null description) $
        do writeHtml "<p>"
           writeHtmlText description
@@ -229,5 +174,5 @@ lastValueTOCHtml st index =
   do writeHtml "<h4><a href=\"#id"
      writeHtml $ show index
      writeHtml "\">"
-     writeHtmlText $ (lvalTitle $ lvalView st)
+     writeHtmlText $ (lastValueTitle $ lastValueView st)
      writeHtml "</a></h4>"

@@ -29,20 +29,26 @@ import Simulation.Aivika.Dynamics.Process
 
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.LastValueView
+import Simulation.Aivika.Experiment.TableView
 
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
                 spcDT = 1.0,
                 spcMethod = RungeKutta4 }
 
-experiment :: Experiment ()
+experiment :: Experiment
 experiment =
-  do setExperimentSpecs specs
-     setExperimentRunCount 3
-     setExperimentDescription "Experiment Description"
-     outputLastValues $
-       do setLastValueDescription "Last value description"
-          addLastValueSeries "x"
+  initExperiment {
+    experimentSpecs = specs,
+    experimentRunCount = 3,
+    experimentDescription = "Experiment Description",
+    experimentGenerators =
+      [outputView $ initLastValueView {
+          lastValueDescription = "Last Value description",
+          lastValueSeries = ["x"] },
+       outputView $ initTableView {
+         tableDescription = "Table description",
+         tableSeries = ["x"] } ] }
 
 upRate = 1.0 / 1.0       -- reciprocal of mean up time
 repairRate = 1.0 / 0.5   -- reciprocal of mean repair time
@@ -100,11 +106,10 @@ model =
      
      let result = 
            do x <- readRef totalUpTime
-              y <- stoptime
+              y <- time
               return $ x / (2 * y)          
               
      experimentDataInStartTime queue $
-       addDataSeriesWithName 
-       "The proportion of up time" "x" result
+       [("x", seriesEntity "The proportion of up time" result)]
 
 main = runExperiment experiment model
