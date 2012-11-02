@@ -23,6 +23,7 @@ import Data.IORef
 import Data.Maybe
 
 import System.IO
+import System.FilePath
 
 import Data.String.Utils (replace)
 
@@ -167,11 +168,12 @@ simulateTable st expdata =
      let f = fromJust $ M.lookup (i - 1) (tableMap st)
      h <- liftIO $ openFile f WriteMode
      -- write a header
-     forM (zip [0..] providers) $ \(column, provider) ->
-       do when (column > 0) $ 
-            liftIO $ hPutStr h separator
-          liftIO $ hPutStr h $ providerName provider
-     liftIO $ hPutStrLn h ""
+     liftIO $
+       do forM_ (zip [0..] providers) $ \(column, provider) ->
+            do when (column > 0) $ 
+                 hPutStr h separator
+               hPutStr h $ providerName provider
+          hPutStrLn h ""
      t <- time
      enqueue (experimentQueue expdata) t $
        -- we must subscribe through the event queue;
@@ -182,14 +184,16 @@ simulateTable st expdata =
           when p $
             do forM_ (zip [0..] input) $ \(column, input) ->  -- write the row
                  do x <- input                                -- write the column
-                    when (column > 0) $ 
-                      liftIO $ hPutStr h separator
-                    liftIO $ hPutStr h $ formatter x
+                    liftIO $
+                      do when (column > 0) $ 
+                           hPutStr h separator
+                         hPutStr h $ formatter x
                liftIO $ hPutStrLn h ""
      return $ 
+       liftIO $
        do when (experimentVerbose $ tableExperiment st) $
-            liftIO $ putStr "Generated " >> putStrLn f
-          liftIO $ hClose h  -- close the file
+            putStr "Generated " >> putStrLn f
+          hClose h  -- close the file
      
 -- | Get the HTML code.     
 tableHtml :: TableViewState -> Int -> HtmlWriter ()     
@@ -205,7 +209,8 @@ tableHtmlSingle st index =
   do header st index
      let f = fromJust $ M.lookup 0 (tableMap st)
      writeHtml "<p>"
-     writeHtmlRelativeLink (tableDir st) f (tableLinkText $ tableView st)
+     writeHtmlLink (tableLinkText $ tableView st) $ 
+       makeRelative (tableDir st) f
      writeHtml "</p>"
 
 -- | Get the HTML code for multiple runs
@@ -221,7 +226,7 @@ tableHtmlMultiple st index =
                 replace "$LINK" (tableLinkText $ tableView st) $
                 (tableRunLinkText $ tableView st)
           writeHtml "<p>"
-          writeHtmlRelativeLink (tableDir st) f sublink
+          writeHtmlLink sublink $ makeRelative (tableDir st) f
           writeHtml "</p>"
 
 header :: TableViewState -> Int -> HtmlWriter ()

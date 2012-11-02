@@ -17,13 +17,10 @@ module Simulation.Aivika.Experiment.HtmlWriter
         writeHtml,
         writeHtmlText,
         writeHtmlLink,
-        writeHtmlRelativeLink,
         encodeHtmlText) where
 
 import Control.Monad
 import Control.Monad.Trans
-
-import System.FilePath
 
 import Network.URI
 
@@ -63,23 +60,11 @@ composeHtml :: ShowS -> HtmlWriter ()
 composeHtml g =
   HtmlWriter $ \f -> return ((), f . g)
 
--- | Write the HTML link by the specified path and text.
-writeHtmlLink :: FilePath -> String -> HtmlWriter ()
-writeHtmlLink path text =
+-- | Write the HTML link by the specified text and path.
+writeHtmlLink :: String -> FilePath -> HtmlWriter ()
+writeHtmlLink text path =
   do writeHtml "<a href=\""
      writeHtml $ escapeURIString isUnescapedInURI path
-     writeHtml "\">"
-     writeHtmlText text
-     writeHtml "</a>"
-         
--- | Write the HTML link using the specified relative path (the
--- first argument relative to the second) and text (the third argument). 
-writeHtmlRelativeLink :: FilePath -> FilePath -> String -> HtmlWriter ()
-writeHtmlRelativeLink path1 path2 text =
-  do writeHtml "<a href=\""
-     writeHtml $
-       escapeURIString isUnescapedInURI $
-       makeRelative path1 path2
      writeHtml "\">"
      writeHtmlText text
      writeHtml "</a>"
