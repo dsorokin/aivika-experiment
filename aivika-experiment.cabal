@@ -39,6 +39,6 @@ library
                      network >= 2.4.0.1,
                      aivika >= 0.4.2
 
-    extensions:      FlexibleContexts
+    extensions:      FlexibleInstances
                      
     ghc-options:     -O2
