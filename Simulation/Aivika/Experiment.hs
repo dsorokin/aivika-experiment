@@ -21,7 +21,7 @@
 
 module Simulation.Aivika.Experiment
        (Experiment(..),
-        initExperiment,
+        defaultExperiment,
         runExperiment,
         ExperimentData(..),
         experimentDataInStartTime,
@@ -83,9 +83,9 @@ data Experiment =
                -- in the specified directory. 
              }
 
--- | The initial experiment.
-initExperiment :: Experiment
-initExperiment =
+-- | The default experiment.
+defaultExperiment :: Experiment
+defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4,
                experimentRunCount      = 1,
                experimentDirectoryName = UniqueDirectoryName "experiment",

@@ -38,15 +38,15 @@ specs = Specs { spcStartTime = 0.0,
 
 experiment :: Experiment
 experiment =
-  initExperiment {
+  defaultExperiment {
     experimentSpecs = specs,
     experimentRunCount = 3,
     experimentDescription = "Experiment Description",
     experimentGenerators =
-      [outputView $ initLastValueView {
+      [outputView $ defaultLastValueView {
           lastValueDescription = "Last Value description",
           lastValueSeries = ["x"] },
-       outputView $ initTableView {
+       outputView $ defaultTableView {
          tableDescription = "Table description",
          tableSeries = ["x"] } ] }
 

@@ -13,7 +13,7 @@
 
 module Simulation.Aivika.Experiment.LastValueView 
        (LastValueView(..),
-        initLastValueView) where
+        defaultLastValueView) where
 
 import Control.Monad
 import Control.Monad.State
@@ -56,9 +56,9 @@ data LastValueView =
                   -- ^ It contains the labels of the observed series.
                 }
   
--- | This is an initial view.
-initLastValueView :: LastValueView
-initLastValueView =  
+-- | This is the default view.
+defaultLastValueView :: LastValueView
+defaultLastValueView =  
   LastValueView { lastValueTitle       = "The Last Values",
                   lastValueRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
                   lastValueDescription = [],

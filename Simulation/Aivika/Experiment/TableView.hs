@@ -13,7 +13,7 @@
 
 module Simulation.Aivika.Experiment.TableView 
        (TableView(..), 
-        initTableView) where
+        defaultTableView) where
 
 import Control.Monad
 import Control.Monad.State
@@ -100,9 +100,9 @@ data TableView =
               -- in the CSV file(s).
             }
   
--- | The initial table view.  
-initTableView :: TableView
-initTableView = 
+-- | The default table view.  
+defaultTableView :: TableView
+defaultTableView = 
   TableView { tableTitle       = "Table",
               tableDescription = [],
               tableLinkText    = "Download the CSV file",
