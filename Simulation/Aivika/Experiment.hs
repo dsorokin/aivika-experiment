@@ -185,10 +185,12 @@ experimentMixedSignal expdata providers =
       xs2 = filter isNothing xs0
       signal1 = mconcat $ map fromJust xs1
       signal2 = if (null xs2) 
-                then emptySignal 
-                else fmap (const ()) $ experimentSignalInIntegTimes expdata
-      signal3 = fmap (const ()) $ experimentSignalInStopTime expdata
-  in signal1 <> signal2 <> signal3
+                then signal3 <> signal4
+                else signal5
+      signal3 = fmap (const ()) $ experimentSignalInStartTime expdata
+      signal4 = fmap (const ()) $ experimentSignalInStopTime expdata
+      signal5 = fmap (const ()) $ experimentSignalInIntegTimes expdata
+  in signal1 <> signal2
 
 -- | Return the 'SeriesProvider' values from the experiment data by the specified labels.
 experimentSeriesProviders :: ExperimentData -> [String] -> [SeriesProvider]
