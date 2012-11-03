@@ -240,6 +240,5 @@ header st index =
 -- | Get the TOC item     
 tableTOCHtml :: TableViewState -> Int -> HtmlWriter ()
 tableTOCHtml st index =
-  writeHtmlHeader4 $
   writeHtmlLink ("#id" ++ show index) $
   writeHtmlText (tableTitle $ tableView st)

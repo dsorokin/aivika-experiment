@@ -173,6 +173,5 @@ formatPair (name, value) formatter =
 -- | Get the TOC item     
 lastValueTOCHtml :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueTOCHtml st index =
-  writeHtmlHeader4 $
   writeHtmlLink ("#id" ++ show index) $
   writeHtmlText (lastValueTitle $ lastValueView st)

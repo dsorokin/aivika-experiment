@@ -15,6 +15,7 @@ module Simulation.Aivika.Experiment.HtmlWriter
         runHtmlWriter,
         composeHtml,
         writeHtml,
+        writeHtmlLn,
         writeHtmlText,
         writeHtmlParagraph,
         writeHtmlParagraphWithId,
@@ -32,6 +33,7 @@ module Simulation.Aivika.Experiment.HtmlWriter
         writeHtmlHeader6WithId,
         writeHtmlBreak,
         writeHtmlLink,
+        writeHtmlList,
         writeHtmlDocumentWithTitle,
         encodeHtmlText) where
 
@@ -65,6 +67,12 @@ instance MonadIO HtmlWriter where
 writeHtml :: String -> HtmlWriter ()
 writeHtml code = 
   HtmlWriter $ \f -> return ((), f . (code ++))
+                     
+-- | Write the HTML code.
+writeHtmlLn :: String -> HtmlWriter ()
+writeHtmlLn code = 
+  do writeHtml code
+     writeHtml "\n"
                      
 -- | Write the text in HTML.                     
 writeHtmlText :: String -> HtmlWriter ()                     
@@ -202,6 +210,16 @@ writeHtmlBreak :: HtmlWriter ()
 writeHtmlBreak =
   writeHtml "<br />"
      
+-- | Write the list of items.  
+writeHtmlList :: [a] -> (a -> HtmlWriter ()) -> HtmlWriter ()
+writeHtmlList xs action =
+  do writeHtml "<ul>"
+     forM_ xs $ \x -> 
+       do writeHtml "<li>"
+          action x 
+          writeHtml "</li>"
+     writeHtml "</ul>"
+
 -- | Write the HTML document with the specified title and contents
 writeHtmlDocumentWithTitle :: String -> HtmlWriter () -> HtmlWriter ()
 writeHtmlDocumentWithTitle title inner =
@@ -210,6 +228,7 @@ writeHtmlDocumentWithTitle title inner =
      writeHtml "<title>"
      writeHtmlText title
      writeHtml "</title>"
+     writeHtmlCss 
      writeHtml "</head>"
      writeHtml "<body>"
      writeHtmlHeader1 $ 
@@ -237,3 +256,116 @@ encodeHtmlChar '&'  = "&amp;"
 encodeHtmlChar '"'  = "&quot;"
 encodeHtmlChar '\'' = "&#39;"
 encodeHtmlChar c    = [c]
+
+-- | Write the CSS styles
+writeHtmlCss :: HtmlWriter ()
+writeHtmlCss =
+  do writeHtmlLn "<style type=\"text/css\">"
+     writeHtmlLn "* { margin: 0; padding: 0 }"
+     writeHtmlLn ""
+     writeHtmlLn "html {"
+     writeHtmlLn "  background-color: white;"
+     writeHtmlLn "  width: 100%;"
+     writeHtmlLn "  height: 100%;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "body {"
+     writeHtmlLn "  background: white;"
+     writeHtmlLn "  color: black;"
+     writeHtmlLn "  text-align: left;"
+     writeHtmlLn "  min-height: 100%;"
+     writeHtmlLn "  position: relative;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "p {"
+     writeHtmlLn "  margin: 0.8em 0;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "ul, ol {"
+     writeHtmlLn "  margin: 0.8em 0 0.8em 2em;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "dl {"
+     writeHtmlLn "  margin: 0.8em 0;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "dt {"
+     writeHtmlLn "  font-weight: bold;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "dd {"
+     writeHtmlLn "  margin-left: 2em;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "a { text-decoration: none; }"
+     writeHtmlLn "a[href]:link { color: rgb(196,69,29); }"
+     writeHtmlLn "a[href]:visited { color: rgb(171,105,84); }"
+     writeHtmlLn "a[href]:hover { text-decoration:underline; }"
+     writeHtmlLn ""
+     writeHtmlLn "body {"
+     writeHtmlLn "  font:13px/1.4 sans-serif;"
+     writeHtmlLn "  *font-size:small; /* for IE */"
+     writeHtmlLn "  *font:x-small; /* for IE in quirks mode */"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "h1 { font-size: 146.5%; /* 19pt */ } "
+     writeHtmlLn "h2 { font-size: 131%;   /* 17pt */ }"
+     writeHtmlLn "h3 { font-size: 116%;   /* 15pt */ }"
+     writeHtmlLn "h4 { font-size: 100%;   /* 13pt */ }"
+     writeHtmlLn "h5 { font-size: 100%;   /* 13pt */ }"
+     writeHtmlLn ""
+     writeHtmlLn "select, input, button, textarea {"
+     writeHtmlLn "  font:99% sans-serif;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "table {"
+     writeHtmlLn "  font-size:inherit;"
+     writeHtmlLn "  font:100%;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "pre, code, kbd, samp, tt, .src {"
+     writeHtmlLn "  font-family:monospace;"
+     writeHtmlLn "  *font-size:108%;"
+     writeHtmlLn "  line-height: 124%;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn ".links, .link {"
+     writeHtmlLn "  font-size: 85%; /* 11pt */"
+     writeHtmlLn "}"
+     writeHtmlLn ".info  {"
+     writeHtmlLn "  font-size: 85%; /* 11pt */"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn ".caption, h1, h2, h3, h4, h5, h6 { "
+     writeHtmlLn "  font-weight: bold;"
+     writeHtmlLn "  color: rgb(78,98,114);"
+     writeHtmlLn "  margin: 0.8em 0 0.4em;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "* + h1, * + h2, * + h3, * + h4, * + h5, * + h6 {"
+     writeHtmlLn "  margin-top: 2em;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "h1 + h2, h2 + h3, h3 + h4, h4 + h5, h5 + h6 {"
+     writeHtmlLn "  margin-top: inherit;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "ul.links {"
+     writeHtmlLn "  list-style: none;"
+     writeHtmlLn "  text-align: left;"
+     writeHtmlLn "  float: right;"
+     writeHtmlLn "  display: inline-table;"
+     writeHtmlLn "  margin: 0 0 0 1em;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "ul.links li {"
+     writeHtmlLn "  display: inline;"
+     writeHtmlLn "  border-left: 1px solid #d5d5d5; "
+     writeHtmlLn "  white-space: nowrap;"
+     writeHtmlLn "  padding: 0;"
+     writeHtmlLn "}"
+     writeHtmlLn ""
+     writeHtmlLn "ul.links li a {"
+     writeHtmlLn "  padding: 0.2em 0.5em;"
+     writeHtmlLn "}"
+     writeHtmlLn "</style>"

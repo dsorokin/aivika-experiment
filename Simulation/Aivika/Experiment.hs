@@ -268,19 +268,17 @@ runExperiment e simulation =
 -- | Create an index HTML file.     
 createIndexHtml :: Experiment -> [Reporter] -> FilePath -> IO ()
 createIndexHtml e reporters path = 
-  do let contents :: (Reporter -> Int -> HtmlWriter ()) -> HtmlWriter ()
-         contents f =
-           forM_ (zip [1..] reporters) $ \(i, reporter) ->
-           f reporter i
-         html :: HtmlWriter ()
+  do let html :: HtmlWriter ()
          html = do 
            writeHtmlDocumentWithTitle (experimentTitle e) $
-             do contents reporterTOCHtml
+             do writeHtmlList (zip [1..] reporters) $ \(i, reporter) -> 
+                  reporterTOCHtml reporter i
                 writeHtmlBreak
                 unless (null $ experimentDescription e) $
                   writeHtmlParagraph $
                   writeHtmlText $ experimentDescription e
-                contents reporterHtml
+                forM_ (zip [1..] reporters) $ \(i, reporter) ->
+                  reporterHtml reporter i
      ((), contents) <- runHtmlWriter html id
      writeFile (path ++ "/index.html") (contents [])
      when (experimentVerbose e) $
