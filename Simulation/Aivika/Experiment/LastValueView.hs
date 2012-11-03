@@ -147,9 +147,8 @@ lastValueHtmlMultiple st index =
                 replace "$RUN_COUNT" (show n) $
                 replace "$TITLE" (lastValueTitle $ lastValueView st) $
                 (lastValueRunTitle $ lastValueView st)
-          writeHtml "<h4>"
-          writeHtmlText subtitle
-          writeHtml "</h4>"
+          writeHtmlHeader4 $
+            writeHtmlText subtitle
           let r = fromJust $ M.lookup i (lastValueMap st)
           pairs <- liftIO $ readIORef r
           forM_ pairs $ \pair ->
@@ -157,30 +156,23 @@ lastValueHtmlMultiple st index =
 
 header :: LastValueViewState -> Int -> HtmlWriter ()
 header st index =
-  do writeHtml "<h3 id=\"id"
-     writeHtml $ show index
-     writeHtml "\">"
-     writeHtmlText $ (lastValueTitle $ lastValueView st)
-     writeHtml "</h3>"
+  do writeHtmlHeader3WithId ("#id" ++ show index) $
+       writeHtmlText (lastValueTitle $ lastValueView st)
      let description = (lastValueDescription $ lastValueView st)
      unless (null description) $
-       do writeHtml "<p>"
-          writeHtmlText description
-          writeHtml "</p>"
+       writeHtmlParagraph $
+       writeHtmlText description
 
 formatPair :: (String, String) -> ShowS -> HtmlWriter ()
 formatPair (name, value) formatter =
-  do writeHtml "<p>"
-     writeHtmlText name
+  writeHtmlParagraph $ 
+  do writeHtmlText name
      writeHtmlText " = "
      writeHtmlText $ formatter value
-     writeHtml "</p>"
           
 -- | Get the TOC item     
 lastValueTOCHtml :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueTOCHtml st index =
-  do writeHtml "<h4><a href=\"#id"
-     writeHtml $ show index
-     writeHtml "\">"
-     writeHtmlText $ (lastValueTitle $ lastValueView st)
-     writeHtml "</a></h4>"
+  writeHtmlHeader4 $
+  writeHtmlLink ("#id" ++ show index) $
+  writeHtmlText (lastValueTitle $ lastValueView st)

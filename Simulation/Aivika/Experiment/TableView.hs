@@ -208,10 +208,9 @@ tableHtmlSingle :: TableViewState -> Int -> HtmlWriter ()
 tableHtmlSingle st index =
   do header st index
      let f = fromJust $ M.lookup 0 (tableMap st)
-     writeHtml "<p>"
-     writeHtmlLink (tableLinkText $ tableView st) $ 
-       makeRelative (tableDir st) f
-     writeHtml "</p>"
+     writeHtmlParagraph $
+       writeHtmlLink (makeRelative (tableDir st) f) $
+       writeHtmlText (tableLinkText $ tableView st)
 
 -- | Get the HTML code for multiple runs
 tableHtmlMultiple :: TableViewState -> Int -> HtmlWriter ()
@@ -225,28 +224,22 @@ tableHtmlMultiple st index =
                 replace "$RUN_COUNT" (show n) $
                 replace "$LINK" (tableLinkText $ tableView st) $
                 (tableRunLinkText $ tableView st)
-          writeHtml "<p>"
-          writeHtmlLink sublink $ makeRelative (tableDir st) f
-          writeHtml "</p>"
+          writeHtmlParagraph $
+            writeHtmlLink (makeRelative (tableDir st) f) $
+            writeHtmlText sublink
 
 header :: TableViewState -> Int -> HtmlWriter ()
 header st index =
-  do writeHtml "<h3 id=\"id"
-     writeHtml $ show index
-     writeHtml "\">"
-     writeHtmlText $ (tableTitle $ tableView st)
-     writeHtml "</h3>"
+  do writeHtmlHeader3WithId ("#id" ++ show index) $ 
+       writeHtmlText (tableTitle $ tableView st)
      let description = (tableDescription $ tableView st)
      unless (null description) $
-       do writeHtml "<p>"
-          writeHtmlText description
-          writeHtml "</p>"
+       writeHtmlParagraph $ 
+       writeHtmlText description
 
 -- | Get the TOC item     
 tableTOCHtml :: TableViewState -> Int -> HtmlWriter ()
 tableTOCHtml st index =
-  do writeHtml "<h4><a href=\"#id"
-     writeHtml $ show index
-     writeHtml "\">"
-     writeHtmlText $ (tableTitle $ tableView st)
-     writeHtml "</a></h4>"
+  writeHtmlHeader4 $
+  writeHtmlLink ("#id" ++ show index) $
+  writeHtmlText (tableTitle $ tableView st)
