@@ -33,6 +33,7 @@ module Simulation.Aivika.Experiment.HtmlWriter
         writeHtmlHeader6WithId,
         writeHtmlBreak,
         writeHtmlLink,
+        writeHtmlImage,
         writeHtmlList,
         writeHtmlDocumentWithTitle,
         encodeHtmlText) where
@@ -93,6 +94,13 @@ writeHtmlLink uri inner =
      inner
      writeHtml "</a>"
      
+-- | Write the HTML image with the specified URI.
+writeHtmlImage :: String -> HtmlWriter ()
+writeHtmlImage uri =
+  do writeHtml "<img src=\""
+     writeHtml $ escapeURIString isUnescapedInURI uri
+     writeHtml "\" />"
+
 -- | Write the @\<p\>@ element with the specified contents.     
 writeHtmlParagraph :: HtmlWriter () -> HtmlWriter ()     
 writeHtmlParagraph inner =
