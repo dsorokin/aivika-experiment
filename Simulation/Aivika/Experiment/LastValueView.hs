@@ -16,7 +16,7 @@ module Simulation.Aivika.Experiment.LastValueView
         defaultLastValueView) where
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.Trans
 
 import qualified Data.Map as M
 import Data.IORef
