@@ -192,7 +192,7 @@ simulateTable st expdata =
      return $ 
        liftIO $
        do when (experimentVerbose $ tableExperiment st) $
-            putStr "Generated " >> putStrLn f
+            putStr "Generated file " >> putStrLn f
           hClose h  -- close the file
      
 -- | Get the HTML code.     
