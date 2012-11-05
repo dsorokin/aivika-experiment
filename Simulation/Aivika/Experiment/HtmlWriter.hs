@@ -35,6 +35,7 @@ module Simulation.Aivika.Experiment.HtmlWriter
         writeHtmlLink,
         writeHtmlImage,
         writeHtmlList,
+        writeHtmlListItem,
         writeHtmlDocumentWithTitle,
         encodeHtmlText) where
 
@@ -218,15 +219,19 @@ writeHtmlBreak :: HtmlWriter ()
 writeHtmlBreak =
   writeHtml "<br />"
      
--- | Write the list of items.  
-writeHtmlList :: [a] -> (a -> HtmlWriter ()) -> HtmlWriter ()
-writeHtmlList xs action =
+-- | Write the list of items wrapped in @\<ul\>@.  
+writeHtmlList :: HtmlWriter () -> HtmlWriter ()
+writeHtmlList inner =
   do writeHtml "<ul>"
-     forM_ xs $ \x -> 
-       do writeHtml "<li>"
-          action x 
-          writeHtml "</li>"
+     inner
      writeHtml "</ul>"
+
+-- | Write the item list wrapped in @\<li\>@.  
+writeHtmlListItem :: HtmlWriter () -> HtmlWriter ()
+writeHtmlListItem inner =
+  do writeHtml "<li>"
+     inner
+     writeHtml "</li>"
 
 -- | Write the HTML document with the specified title and contents
 writeHtmlDocumentWithTitle :: String -> HtmlWriter () -> HtmlWriter ()

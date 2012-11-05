@@ -224,6 +224,8 @@ data Reporter =
              -- function is called, i.e. in the very end. 
              -- The agument specifies the ordered number of 
              -- the item.
+             --
+             -- You should wrap your HTML in 'writeHtmlListItem'.
              reporterHtml :: Int -> HtmlWriter ()
              -- ^ Return an HTML code for the index file
              -- after the finalisation function is called,
@@ -271,7 +273,8 @@ createIndexHtml e reporters path =
   do let html :: HtmlWriter ()
          html = do 
            writeHtmlDocumentWithTitle (experimentTitle e) $
-             do writeHtmlList (zip [1..] reporters) $ \(i, reporter) -> 
+             do writeHtmlList $
+                  forM_ (zip [1..] reporters) $ \(i, reporter) -> 
                   reporterTOCHtml reporter i
                 writeHtmlBreak
                 unless (null $ experimentDescription e) $
