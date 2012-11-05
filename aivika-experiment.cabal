@@ -28,6 +28,7 @@ library
                      Simulation.Aivika.Experiment.HtmlWriter
                      Simulation.Aivika.Experiment.LastValueView
                      Simulation.Aivika.Experiment.TableView
+                     Simulation.Aivika.Experiment.Utils
                      
     build-depends:   base >= 3 && < 6,
                      mtl >= 1.1.0.2,
