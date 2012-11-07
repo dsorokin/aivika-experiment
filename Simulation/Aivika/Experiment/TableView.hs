@@ -157,7 +157,7 @@ simulateTable st expdata =
            case providerToString provider of
              Nothing -> error $
                         "Cannot represent series " ++
-                        (providerName provider) ++ 
+                        providerName provider ++ 
                         " as a string: simulateTable"
              Just input -> input
          separator = tableSeparator $ tableView st
@@ -222,7 +222,7 @@ tableHtmlMultiple st index =
               sublink = 
                 replace "$RUN_INDEX" (show $ i + 1) $
                 replace "$RUN_COUNT" (show n) $
-                replace "$LINK" (tableLinkText $ tableView st) $
+                replace "$LINK" (tableLinkText $ tableView st)
                 (tableRunLinkText $ tableView st)
           writeHtmlParagraph $
             writeHtmlLink (makeRelative (tableDir st) f) $
@@ -232,7 +232,7 @@ header :: TableViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (tableTitle $ tableView st)
-     let description = (tableDescription $ tableView st)
+     let description = tableDescription $ tableView st
      unless (null description) $
        writeHtmlParagraph $ 
        writeHtmlText description

@@ -184,12 +184,12 @@ experimentMixedSignal expdata providers =
       xs1 = filter isJust xs0
       xs2 = filter isNothing xs0
       signal1 = mconcat $ map fromJust xs1
-      signal2 = if (null xs2) 
+      signal2 = if null xs2 
                 then signal3 <> signal4
                 else signal5
-      signal3 = fmap (const ()) $ experimentSignalInStartTime expdata
-      signal4 = fmap (const ()) $ experimentSignalInStopTime expdata
-      signal5 = fmap (const ()) $ experimentSignalInIntegTimes expdata
+      signal3 = void $ experimentSignalInStartTime expdata
+      signal4 = void $ experimentSignalInStopTime expdata
+      signal5 = void $ experimentSignalInIntegTimes expdata
   in signal1 <> signal2
 
 -- | Return the 'SeriesProvider' values from the experiment data by the specified labels.
@@ -247,7 +247,7 @@ runExperiment e simulation =
        do putStr "Using directory " 
           putStrLn path
      createDirectoryIfMissing True path
-     reporters <- mapM (\x -> generateReporter x e path) $
+     reporters <- mapM (\x -> generateReporter x e path)
                   generators
      forM_ reporters reporterInitialise
      let simulate :: Simulation ()
@@ -271,7 +271,7 @@ runExperiment e simulation =
 createIndexHtml :: Experiment -> [Reporter] -> FilePath -> IO ()
 createIndexHtml e reporters path = 
   do let html :: HtmlWriter ()
-         html = do 
+         html = 
            writeHtmlDocumentWithTitle (experimentTitle e) $
              do writeHtmlList $
                   forM_ (zip [1..] reporters) $ \(i, reporter) -> 

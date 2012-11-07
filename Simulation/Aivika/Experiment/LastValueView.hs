@@ -102,7 +102,7 @@ simulateLastValues st expdata =
            case providerToString provider of
              Nothing -> error $
                         "Cannot represent series " ++
-                        (providerName provider) ++ 
+                        providerName provider ++ 
                         " as a string: simulateLastValues"
              Just input -> (providerName provider, input)
      i <- liftSimulation simulationIndex
@@ -145,7 +145,7 @@ lastValueHtmlMultiple st index =
        do let subtitle = 
                 replace "$RUN_INDEX" (show $ i + 1) $
                 replace "$RUN_COUNT" (show n) $
-                replace "$TITLE" (lastValueTitle $ lastValueView st) $
+                replace "$TITLE" (lastValueTitle $ lastValueView st)
                 (lastValueRunTitle $ lastValueView st)
           writeHtmlHeader4 $
             writeHtmlText subtitle
@@ -158,7 +158,7 @@ header :: LastValueViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (lastValueTitle $ lastValueView st)
-     let description = (lastValueDescription $ lastValueView st)
+     let description = lastValueDescription $ lastValueView st
      unless (null description) $
        writeHtmlParagraph $
        writeHtmlText description
