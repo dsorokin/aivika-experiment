@@ -230,7 +230,7 @@ tableHtmlMultiple st index =
 
 header :: TableViewState -> Int -> HtmlWriter ()
 header st index =
-  do writeHtmlHeader3WithId ("#id" ++ show index) $ 
+  do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (tableTitle $ tableView st)
      let description = (tableDescription $ tableView st)
      unless (null description) $

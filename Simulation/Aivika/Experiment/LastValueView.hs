@@ -156,7 +156,7 @@ lastValueHtmlMultiple st index =
 
 header :: LastValueViewState -> Int -> HtmlWriter ()
 header st index =
-  do writeHtmlHeader3WithId ("#id" ++ show index) $
+  do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (lastValueTitle $ lastValueView st)
      let description = (lastValueDescription $ lastValueView st)
      unless (null description) $
