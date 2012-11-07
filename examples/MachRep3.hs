@@ -36,18 +36,30 @@ specs = Specs { spcStartTime = 0.0,
                 spcDT = 1.0,
                 spcMethod = RungeKutta4 }
 
+description =
+  "Variation of models MachRep1, MachRep2. Two machines, but " ++
+  "sometimes break down. Up time is exponentially distributed with mean " ++
+  "1.0, and repair time is exponentially distributed with mean 0.5. In " ++
+  "this example, there is only one repairperson, and she is not summoned " ++
+  "until both machines are down. We find the proportion of up time. It " ++
+  "should come out to about 0.45."
+
 experiment :: Experiment
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
     experimentRunCount = 3,
-    experimentDescription = "Experiment Description",
+    experimentDescription = description,
     experimentGenerators =
       [outputView $ defaultLastValueView {
-          lastValueDescription = "Last Value description",
+          lastValueDescription = 
+             "It shows the last value of " ++
+             "the proportion of up time.",
           lastValueSeries = ["x"] },
        outputView $ defaultTableView {
-         tableDescription = "Table description",
+         tableDescription = 
+            "These are tables for " ++
+            "the proportion of up time.",
          tableSeries = ["x"] } ] }
 
 upRate = 1.0 / 1.0       -- reciprocal of mean up time
