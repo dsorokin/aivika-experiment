@@ -282,12 +282,12 @@ createIndexHtml e reporters path =
                   writeHtmlText $ experimentDescription e
                 forM_ (zip [1..] reporters) $ \(i, reporter) ->
                   reporterHtml reporter i
+         file = combine path "index.html"
      ((), contents) <- runHtmlWriter html id
-     writeFile (path ++ "/index.html") (contents [])
+     writeFile file (contents [])
      when (experimentVerbose e) $
        do putStr "Generated file "
-          putStr path
-          putStrLn "/index.html"
+          putStrLn file
 
 -- | Specifies the directory name, unique or writable.
 data DirectoryName = WritableDirectoryName String
