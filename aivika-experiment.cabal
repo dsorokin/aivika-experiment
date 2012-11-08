@@ -1,5 +1,5 @@
 name:            aivika-experiment
-version:         0.1.2
+version:         0.2
 synopsis:        Simulation experiments for the Aivika library
 description:
     This package allows defining simulation experiments for the Aivika
@@ -38,6 +38,7 @@ library
                      filepath >= 1.3.0.0,
                      MissingH >= 1.2.0.0,
                      network >= 2.3.0.13,
+                     parallel-io >= 0.3.2.1,
                      aivika >= 0.4.3
 
     extensions:      FlexibleInstances

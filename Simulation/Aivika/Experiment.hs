@@ -23,6 +23,7 @@ module Simulation.Aivika.Experiment
        (Experiment(..),
         defaultExperiment,
         runExperiment,
+        runExperimentParallel,
         ExperimentData(..),
         experimentDataInStartTime,
         experimentSeriesProviders,
@@ -40,6 +41,7 @@ module Simulation.Aivika.Experiment
 
 import Control.Monad
 import Control.Monad.State
+import Control.Concurrent.ParallelIO.Local
 
 import qualified Data.Map as M
 import Data.Array
@@ -50,6 +52,8 @@ import Data.String.Utils (replace)
 import System.IO
 import System.Directory
 import System.FilePath (combine)
+
+import GHC.Conc (getNumCapabilities)
 
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation
@@ -237,7 +241,27 @@ data Reporter =
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
 runExperiment :: Experiment -> Simulation ExperimentData -> IO ()
-runExperiment e simulation = 
+runExperiment = runExperimentWithExecutor sequence_
+  
+-- | Run the simulation experiment parallelly. 
+--
+-- Make sure that you compile with @-threaded@ and supply @+RTS -N2 -RTS@ 
+-- to the generated Haskell executable on dual core processor, 
+-- or you won't get any parallelism. Generally, the mentioned 
+-- @N@ parameter should correspond to the number of cores for 
+-- your processor.
+runExperimentParallel :: Experiment -> Simulation ExperimentData -> IO ()
+runExperimentParallel = runExperimentWithExecutor executor 
+  where executor tasks =
+          do n <- getNumCapabilities
+             withPool n $ \pool ->
+               parallel_ pool tasks
+                        
+-- | Run the simulation experiment with the specified executor.
+runExperimentWithExecutor :: ([IO ()] -> IO ()) ->
+                             Experiment -> 
+                             Simulation ExperimentData -> IO ()
+runExperimentWithExecutor executor e simulation = 
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
          dirName    = experimentDirectoryName e
@@ -262,7 +286,7 @@ runExperiment e simulation =
                      join $ map seriesProviders $
                      M.elems $ experimentSeries d
                    sequence_ fs
-     sequence_ $ runSimulations simulate specs runCount
+     executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
      experimentIndexHtml e e reporters path
      return ()
