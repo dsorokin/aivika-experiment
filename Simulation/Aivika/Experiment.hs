@@ -397,7 +397,7 @@ instance Series (Dynamics Int) where
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap (fromInteger . toInteger) s,
+                                        providerToDouble = Just $ fmap fromIntegral s,
                                         providerToInt    = Just s,
                                         providerToString = Just $ fmap show s,
                                         providerSignal   = Nothing }] }
@@ -427,7 +427,7 @@ instance Series (Ref Int) where
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap (fromInteger . toInteger) (readRef s),
+                                        providerToDouble = Just $ fmap fromIntegral (readRef s),
                                         providerToInt    = Just $ readRef s,
                                         providerToString = Just $ fmap show (readRef s),
                                         providerSignal   = Just $ refChanged_ s }] }
@@ -457,7 +457,7 @@ instance Series (Var Int) where
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap (fromInteger . toInteger) (readVar s),
+                                        providerToDouble = Just $ fmap fromIntegral (readVar s),
                                         providerToInt    = Just $ readVar s,
                                         providerToString = Just $ fmap show (readVar s),
                                         providerSignal   = Just $ varChanged_ s }] }
@@ -487,7 +487,7 @@ instance Series (UVar Int) where
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap (fromInteger . toInteger) (readUVar s),
+                                        providerToDouble = Just $ fmap fromIntegral (readUVar s),
                                         providerToInt    = Just $ readUVar s,
                                         providerToString = Just $ fmap show (readUVar s),
                                         providerSignal   = Just $ uvarChanged_ s }] }
