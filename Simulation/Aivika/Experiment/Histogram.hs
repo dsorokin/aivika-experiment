@@ -19,8 +19,7 @@ module Simulation.Aivika.Experiment.Histogram
      binSturges, 
      binDoane, 
      binSqrt, 
-     binScott, 
-     binFreedmanDiaconis) where
+     binScott) where
 
 import Data.List
 import Data.Monoid
@@ -76,13 +75,6 @@ binScott xs = stratFromBinWidth xs $ 3.5*(stddev xs) / (n**(1/3))
     where 
         n = fromIntegral $ length xs
         
--- | The Freedman-Diaconis rule is less susceptible to outliers than 
--- Scott's and is also used on \"normalish\" data.
-binFreedmanDiaconis :: BinningStrategy
-binFreedmanDiaconis xs = stratFromBinWidth xs $ 3.5*(stddev xs) / (n**(1/3))
-    where 
-        n = fromIntegral $ length xs
-
 -------------------------------------------------------------------------------
 -- create the histogram data
 
