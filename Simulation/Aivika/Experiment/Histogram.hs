@@ -2,13 +2,11 @@
 -- | This module computes the histogram by the 
 -- specified data and strategy applied for such computing.
 --
--- The code in this module is almost fully based on the 
+-- The code in this module is essentially based on the 
 -- <http://hackage.haskell.org/package/Histogram> package
 -- by Mike Izbicki, who kindly agreed to re-license 
 -- his library under BSD3, which allowed me to use his 
--- code and comments almost without modifications. The 
--- main reason of such copying is that the original code 
--- depends on GnuPlot.
+-- code and comments with some modifications. 
 
 module Simulation.Aivika.Experiment.Histogram 
     (-- * Creating Histograms
@@ -32,8 +30,11 @@ import Numeric
 
 -------------------------------------------------------------------------------
 
--- | Holds all the information needed to plot the histogram.
-type Histogram = [(Double, Int)]
+-- | Holds all the information needed to plot the histogram 
+-- for a list of different series. Each series produces its 
+-- own item in the resuling @[Int]@ list that may contain
+-- zeros.
+type Histogram = [(Double, [Int])]
 
 -------------------------------------------------------------------------------
 -- Bin counters; check out http://en.wikipedia.org/wiki/Histogram#Number_of_bins_and_width
@@ -44,7 +45,7 @@ type BinningStrategy = [Double] -> Int
 -- | This is only a helper function to convert strategies that 
 -- specify bin width into strategies that specify the number of bins.
 stratFromBinWidth :: [Double] -> Double -> Int
-stratFromBinWidth xs h = ceiling $ ((maximum xs) - (minimum xs))/h
+stratFromBinWidth xs h = ceiling $ ((maximum xs) - (minimum xs)) / h
 
 -- | Sturges' binning strategy is the least computational work, 
 -- but recommended for only normal data.
@@ -85,67 +86,67 @@ binFreedmanDiaconis xs = stratFromBinWidth xs $ 3.5*(stddev xs) / (n**(1/3))
 -------------------------------------------------------------------------------
 -- create the histogram data
 
--- | Creates a histogram that's ready for plotting.  Call it with one of 
+-- | Creates a histogram by specifying the list of series.  Call it with one of 
 -- the binning strategies that is appropriate to the type of data you have.  
 -- If you don't know, then try using 'binSturges'.
-histogram :: BinningStrategy -> [Double] -> Histogram
-histogram strat xs = histogramNumBins (strat xs) xs
+histogram :: BinningStrategy -> [[Double]] -> Histogram
+histogram strat xs = histogramNumBins (strat $ concat xs) xs
 
 -- | Create a histogram by specifying the exact bin size. 
 -- You probably don't want to use this function, and should use histogram 
 -- with an appropriate binning strategy.
-histogramBinSize :: Double -> [Double] -> Histogram
-histogramBinSize size xs = fillhist size $ histbin size $ bin size xs
+histogramBinSize :: Double -> [[Double]] -> Histogram
+histogramBinSize size = combineBins . map (histBins size) . map (bin size)
 
--- | Create a histogram by the specified number of bins.
+-- | Create a histogram by the specified approximated number of bins.
 -- You probably don't want to use this function, and should use 
 -- histogram with an appropriate binning strategy.
-histogramNumBins :: Int -> [Double] -> Histogram
+histogramNumBins :: Int -> [[Double]] -> Histogram
 histogramNumBins n xs =
     histogramBinSize size xs
     where
-        size = (fromIntegral $ firstdigit diff) *((10) ** (fromIntegral $ exponent10 diff))
-        diff = if diff_test==0
+        size = (fromIntegral $ firstdigit diff) * ((10) ** (fromIntegral $ exponent10 diff))
+        diff = if diff_test == 0
                   then 1
                   else diff_test
-        diff_test = ((maximum xs)-(minimum xs))/(fromIntegral n)
+        diff_test = ((maximum $ map maximum xs) - 
+                     (minimum $ map minimum xs)) / (fromIntegral n)
 
-        firstdigit dbl = floor $ dbl/((10) ** (fromIntegral $ exponent10 dbl))
+        firstdigit dbl = floor $ dbl / ((10) ** (fromIntegral $ exponent10 dbl))
         exponent10 dbl = floor $ log10 dbl
         log10 x = (log x) / (log 10)
 
--- helpers
+-- | It does all the binning for the histogram.
+histBins :: Double -> [Double] -> [(Double, Int)]
+histBins size xs = [ (head l, length l) | l <- group (sort xs) ]
 
-   -- histbin does all the binning for the histogram
-histbin :: Double -> [Double] -> [(Double,Int)]
-histbin size xs = Map.toList $ Map.fromList [ (head l, length l) | l <- group (sort xs) ]
-
-   -- histbin bins all the numbers in the histogram, but 
-   -- it ignores any columns with zero elements.
-   -- fillhist adds those zero element columns
-fillhist :: Double -> [(Double,Int)] -> [(Double,Int)]
-fillhist size ((a,b):[]) = [(roundFloat a,b)]
-fillhist size ((a,b):xs) = 
-    if abs (next-a')<0.0001
-       then (roundFloat a,b):(fillhist size xs)
-       else (roundFloat a,b):(fillhist size $ (next,0):xs)
-    where
-        a' = fst $ head xs
-        b' = snd $ head xs
-        next = roundFloat (a+size)
-
--- | bin "rounds" every number into the closest number below it 
+-- | It "rounds" every number into the closest number below it 
 -- that is divisible by size.
 bin :: Double -> [Double] -> [Double]
-bin size xs = map (\x -> size*(fromIntegral $ floor (x/size))) xs
+bin size = map (\x -> size * (fromIntegral $ floor (x / size)))
 
-roundFloat :: Double -> Double
-roundFloat num = read $ showFFloat (Just 3) num ""
+-- | Combine bins from different histograms (optimized version).
+combineBins :: [[(Double, Int)]] -> [(Double, [Int])]
+combineBins [xs] = map (\(t, n) -> (t, [n])) xs
+combineBins xss  = combineBins' xss
 
--- normalcoord m s (x,y) = normalpdf m s x
-
-normalpdf :: Double -> Double -> Double -> Double
-normalpdf m s x = (1/(s*(sqrt $ 2*pi)))*(exp $ -(x-m)^2/(2*s^2))
+-- | Combine bins from different histograms (generic version).
+combineBins' :: [[(Double, Int)]] -> [(Double, [Int])]
+combineBins' xs = map merging $ map sorting $ groupping $ 
+                  ordering $ concat $ numbering xs
+  where numbering       = map indexing . zip [1..]
+        indexing (i, x) = map (\(t, n) -> (i, t, n)) x
+        ordering  = sortBy  $ \(_, t1, _) (_, t2, _) -> compare t1 t2
+        groupping = groupBy $ \(_, t1, _) (_, t2, _) -> t1 == t2
+        sorting   = sortBy  $ \(i1, _, _) (i2, _, _) -> compare i1 i2
+        merging zs @ ((_, t, _) : _) = merging' zs t 1 []
+        merging' [] t k acc
+          | k <= count = merging' [] t (k + 1) (0 : acc)
+          | k > count  = (t, reverse acc)
+        merging' zs @ ((i, _, n) : xs) t k acc
+          | i == k = merging' xs t (k + 1) (n : acc)
+          | i > k  = merging' zs t (k + 1) (0 : acc)
+        count = length xs
 
 ------------------------------------------------------------------------------
 -- simple math functions
