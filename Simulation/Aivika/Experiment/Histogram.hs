@@ -44,22 +44,22 @@ type BinningStrategy = [Double] -> Int
 -- | This is only a helper function to convert strategies that 
 -- specify bin width into strategies that specify the number of bins.
 stratFromBinWidth :: [Double] -> Double -> Int
-stratFromBinWidth xs h = ceiling $ ((maximum xs) - (minimum xs)) / h
+stratFromBinWidth xs h = ceiling $ (maximum xs - minimum xs) / h
 
 -- | Sturges' binning strategy is the least computational work, 
 -- but recommended for only normal data.
 binSturges :: BinningStrategy
-binSturges xs = ceiling $ (log n)/(log 2) + 1
+binSturges xs = ceiling $ logBase 2 n + 1
     where n = fromIntegral $ length xs
           
 -- | Doane's binning strategy extends Sturges' for non-normal data.  
 -- It takes a little more time because it must calculate the kurtosis 
 -- (peakkiness) of the distribution.
 binDoane :: BinningStrategy
-binDoane xs = ceiling $ 1 + (log n) + (log $ 1 + a*((n/6)**(1/2)))
+binDoane xs = ceiling $ 1 + log n + log (1 + a * ((n/6)**(1/2)))
     where 
-        n = fromIntegral $ length xs -- :: Double
-        a = kurtosis xs -- :: Double
+        n = fromIntegral $ length xs
+        a = kurtosis xs
         
 -- | Using the sqrt of the number of samples is not supported by any 
 -- theory, but is commonly used by excel and other histogram making software.
@@ -71,7 +71,7 @@ binSqrt xs = round $ sqrt n
 -- | Scott's rule is the optimal solution for normal data, but requires 
 -- more computation than Sturges'.
 binScott :: BinningStrategy
-binScott xs = stratFromBinWidth xs $ 3.5*(stddev xs) / (n**(1/3))
+binScott xs = stratFromBinWidth xs $ 3.5 * stddev xs / (n**(1/3))
     where 
         n = fromIntegral $ length xs
         
@@ -88,7 +88,7 @@ histogram strat xs = histogramNumBins (strat $ concat xs) xs
 -- You probably don't want to use this function, and should use histogram 
 -- with an appropriate binning strategy.
 histogramBinSize :: Double -> [[Double]] -> Histogram
-histogramBinSize size = combineBins . map (histBins size) . map (bin size)
+histogramBinSize size = combineBins . map (histBins size . bin size)
 
 -- | Create a histogram by the specified approximated number of bins.
 -- You probably don't want to use this function, and should use 
@@ -97,16 +97,15 @@ histogramNumBins :: Int -> [[Double]] -> Histogram
 histogramNumBins n xs =
     histogramBinSize size xs
     where
-        size = (fromIntegral $ firstdigit diff) * ((10) ** (fromIntegral $ exponent10 diff))
+        size = fromIntegral (firstdigit diff) * (10 ** fromIntegral (exponent10 diff))
         diff = if diff_test == 0
                   then 1
                   else diff_test
-        diff_test = ((maximum $ map maximum xs) - 
-                     (minimum $ map minimum xs)) / (fromIntegral n)
+        diff_test = (maximum (map maximum xs) - 
+                     minimum (map minimum xs)) / fromIntegral n
 
-        firstdigit dbl = floor $ dbl / ((10) ** (fromIntegral $ exponent10 dbl))
-        exponent10 dbl = floor $ log10 dbl
-        log10 x = (log x) / (log 10)
+        firstdigit dbl = floor $ dbl / (10 ** fromIntegral (exponent10 dbl))
+        exponent10 dbl = floor $ logBase 10 dbl
 
 -- | It does all the binning for the histogram.
 histBins :: Double -> [Double] -> [(Double, Int)]
@@ -115,7 +114,7 @@ histBins size xs = [ (head l, length l) | l <- group (sort xs) ]
 -- | It "rounds" every number into the closest number below it 
 -- that is divisible by size.
 bin :: Double -> [Double] -> [Double]
-bin size = map (\x -> size * (fromIntegral $ floor (x / size)))
+bin size = map (\x -> size * fromIntegral (floor (x / size)))
 
 -- | Combine bins from different histograms (optimized version).
 combineBins :: [[(Double, Int)]] -> [(Double, [Int])]
@@ -124,9 +123,9 @@ combineBins xss  = combineBins' xss
 
 -- | Combine bins from different histograms (generic version).
 combineBins' :: [[(Double, Int)]] -> [(Double, [Int])]
-combineBins' xs = map merging $ map sorting $ groupping $ 
-                  ordering $ concat $ numbering xs
-  where numbering       = map indexing . zip [1..]
+combineBins' xs = map (merging . sorting) $ 
+                  groupping $ ordering $ concat $ numbering xs
+  where numbering       = zipWith (curry indexing) [1..]
         indexing (i, x) = map (\(t, n) -> (i, t, n)) x
         ordering  = sortBy  $ \(_, t1, _) (_, t2, _) -> compare t1 t2
         groupping = groupBy $ \(_, t1, _) (_, t2, _) -> t1 == t2
@@ -154,19 +153,18 @@ stddev xs = sqrt $ var xs
 
 -- | Sample variance.
 var :: (Floating a) => [a] -> a
-var xs = (var' 0 0 0 xs) / (fromIntegral $ length xs - 1)
+var xs = var' 0 0 0 xs / fromIntegral (length xs - 1)
     where
       var' _ _ s [] = s
       var' m n s (x:xs) = var' nm (n + 1) (s + delta * (x - nm)) xs
          where
            delta = x - m
-           nm = m + delta/(fromIntegral $ n + 1)
+           nm = m + delta / fromIntegral (n + 1)
 
 -- | kurtosis is taken from wikipedia's definition.
 kurtosis :: (Floating a) => [a] -> a
-kurtosis xs = ((1/n) * (sum [(x-x_bar)^4 | x <- xs]))
-            / ((1/n) * (sum [(x-x_bar)^2 | x <- xs]))^2 -3
+kurtosis xs = ((1/n) * sum [(x-x_bar)^4 | x <- xs])
+            / ((1/n) * sum [(x-x_bar)^2 | x <- xs])^2 -3
     where 
         n = fromIntegral $ length xs
         x_bar = mean xs
-
