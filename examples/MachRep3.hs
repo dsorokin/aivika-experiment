@@ -37,7 +37,7 @@ specs = Specs { spcStartTime = 0.0,
                 spcMethod = RungeKutta4 }
 
 description =
-  "Variation of models MachRep1, MachRep2. Two machines, but " ++
+  "Model MachRep3. Variation of models MachRep1, MachRep2. Two machines, but " ++
   "sometimes break down. Up time is exponentially distributed with mean " ++
   "1.0, and repair time is exponentially distributed with mean 0.5. In " ++
   "this example, there is only one repairperson, and she is not summoned " ++
