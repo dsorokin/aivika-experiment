@@ -27,6 +27,10 @@ import qualified Data.Map as Map
 
 import Numeric
 
+---
+import System.IO.Unsafe
+---
+
 -------------------------------------------------------------------------------
 
 -- | Holds all the information needed to plot the histogram 
@@ -95,14 +99,14 @@ histogramBinSize size = combineBins . map (histBins size . bin size)
 -- histogram with an appropriate binning strategy.
 histogramNumBins :: Int -> [[Double]] -> Histogram
 histogramNumBins n xs =
-    histogramBinSize size xs
+  histogramBinSize size xs
     where
         size = fromIntegral (firstdigit diff) * (10 ** fromIntegral (exponent10 diff))
-        diff = if diff_test == 0
-                  then 1
-                  else diff_test
+        diff = if diff_test > 0
+               then diff_test
+               else 1
         diff_test = (maximum (map maximum xs) - 
-                     minimum (map minimum xs)) / fromIntegral n
+                     minimum (map minimum xs)) / fromIntegral (max 1 n)
 
         firstdigit dbl = floor $ dbl / (10 ** fromIntegral (exponent10 dbl))
         exponent10 dbl = floor $ logBase 10 dbl
@@ -114,7 +118,8 @@ histBins size xs = [ (head l, length l) | l <- group (sort xs) ]
 -- | It "rounds" every number into the closest number below it 
 -- that is divisible by size.
 bin :: Double -> [Double] -> [Double]
-bin size = map (\x -> size * fromIntegral (floor (x / size)))
+bin size xs @ [_] = xs
+bin size xs = map (\x -> size * fromIntegral (floor (x / size))) xs
 
 -- | Combine bins from different histograms (optimized version).
 combineBins :: [[(Double, Int)]] -> [(Double, [Int])]
