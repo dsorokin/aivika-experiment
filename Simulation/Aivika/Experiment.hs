@@ -382,6 +382,36 @@ combineName dir name =
     Nothing  -> name
     Just dir -> combine dir name
 
+instance Series (Simulation Double) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Just $ liftSimulation s,
+                                        providerToInt    = Nothing,
+                                        providerToString = Just $ liftSimulation $ fmap show s,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation Int) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Just $ liftSimulation $ fmap fromIntegral s,
+                                        providerToInt    = Just $ liftSimulation s,
+                                        providerToString = Just $ liftSimulation $ fmap show s,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation String) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToInt    = Nothing,
+                                        providerToString = Just $ liftSimulation s,
+                                        providerSignal   = Nothing }] }
+
 instance Series (Dynamics Double) where
   
   seriesEntity name s =
