@@ -121,7 +121,7 @@ model =
               y <- time
               return $ x / (2 * y)          
               
-     experimentDataInStartTime queue $
+     experimentDataInStartTime queue
        [("x", seriesEntity "The proportion of up time" result)]
 
 main = runExperiment experiment model
