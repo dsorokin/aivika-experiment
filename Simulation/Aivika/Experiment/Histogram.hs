@@ -119,7 +119,7 @@ histBins size xs = [ (head l, length l) | l <- group (sort xs) ]
 -- that is divisible by size.
 bin :: Double -> [Double] -> [Double]
 bin size xs @ [_] = xs
-bin size xs = map (\x -> size * fromIntegral (floor (x / size))) xs
+bin size xs = map (\x -> size * fromIntegral (floor (x / size)) + size / 2) xs
 
 -- | Combine bins from different histograms (optimized version).
 combineBins :: [[(Double, Int)]] -> [(Double, [Int])]
