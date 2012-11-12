@@ -27,10 +27,6 @@ import qualified Data.Map as Map
 
 import Numeric
 
----
-import System.IO.Unsafe
----
-
 -------------------------------------------------------------------------------
 
 -- | Holds all the information needed to plot the histogram 
