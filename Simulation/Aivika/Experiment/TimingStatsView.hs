@@ -116,7 +116,7 @@ simulateTimingStats st expdata =
           forM_ pairs $ \(provider, input) ->
             do stats <- liftIO $ newIORef emptyTimingStats
                let name = providerName provider
-               liftIO $ modifyIORef r ((:) (name, stats) )
+               liftIO $ modifyIORef r ((:) (name, stats))
                enqueue (experimentQueue expdata) t $
                  -- we must subscribe through the event queue;
                  -- otherwise, we will loose a signal in the start time,
