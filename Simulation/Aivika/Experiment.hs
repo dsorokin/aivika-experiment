@@ -49,7 +49,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.String.Utils (replace)
 
-import System.IO
+import qualified System.IO.UTF8 as UTF8
 import System.Directory
 import System.FilePath (combine)
 
@@ -308,7 +308,7 @@ createIndexHtml e reporters path =
                   reporterHtml reporter i
          file = combine path "index.html"
      ((), contents) <- runHtmlWriter html id
-     writeFile file (contents [])
+     UTF8.writeFile file (contents [])
      when (experimentVerbose e) $
        do putStr "Generated file "
           putStrLn file
