@@ -21,10 +21,10 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Statistics
 
 -- | Defines a writer that knows how to represent the 'TimingStats'
--- in the HTML form.
+-- as the HTML table.
 data TimingStatsWriter a =
   TimingStatsWriter { timingStatsWidth         :: Int,
-                      -- ^ The width of the HTML form.
+                      -- ^ The width of the HTML table.
                       timingStatsTimeText      :: String,
                       -- ^ Translated text \"time\".
                       timingStatsMeanText      :: String,
@@ -40,7 +40,7 @@ data TimingStatsWriter a =
                       timingStatsWrite         :: TimingStatsWriter a -> String ->
                                                   TimingStats a -> HtmlWriter ()
                       -- ^ This function reprensents the named statistics
-                      -- in the HTML form.
+                      -- as the HTML table.
                       }
 
 -- | The default writer.
