@@ -13,7 +13,7 @@
 -- until both machines are down. We find the proportion of up time. It
 -- should come out to about 0.45.
 
-module MachRep3Model (model) where
+-- module MachRep3Model (model) where
 
 import System.Random
 import Control.Monad
@@ -30,6 +30,7 @@ import Simulation.Aivika.Dynamics.Process
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.LastValueView
 import Simulation.Aivika.Experiment.TableView
+import Simulation.Aivika.Experiment.TimingStatsView
 
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
@@ -56,6 +57,8 @@ experiment =
              "It shows the last value of " ++
              "the proportion of up time.",
           lastValueSeries = ["x"] },
+       outputView $ defaultTimingStatsView {
+         timingStatsSeries = ["x"] },
        outputView $ defaultTableView {
          tableDescription = 
             "These are tables for " ++
@@ -122,6 +125,7 @@ model =
               return $ x / (2 * y)          
               
      experimentDataInStartTime queue
-       [("x", seriesEntity "The proportion of up time" result)]
+       [("x", seriesEntity "The proportion of up time" result),
+        ("t", seriesEntity "Simulation time" time)]
 
 main = runExperiment experiment model

@@ -238,6 +238,7 @@ writeHtmlDocumentWithTitle :: String -> HtmlWriter () -> HtmlWriter ()
 writeHtmlDocumentWithTitle title inner =
   do writeHtml "<html>"
      writeHtml "<head>"
+     writeHtml "<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />"
      writeHtml "<title>"
      writeHtmlText title
      writeHtml "</title>"
