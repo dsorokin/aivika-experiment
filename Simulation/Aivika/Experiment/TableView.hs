@@ -104,7 +104,7 @@ data TableView =
 defaultTableView :: TableView
 defaultTableView = 
   TableView { tableTitle       = "Table",
-              tableDescription = [],
+              tableDescription = "This section contains the CSV file(s) with the simulation results.",
               tableLinkText    = "Download the CSV file",
               tableRunLinkText = "$LINK / Run $RUN_INDEX of $RUN_COUNT",
               tableFileName    = UniqueFileName "$TITLE - $RUN_INDEX" ".csv",

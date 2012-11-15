@@ -54,6 +54,8 @@ data TimingStatsView =
                     -- ^ The description for the view.
                     timingStatsWriter      :: TimingStatsWriter Double,
                     -- ^ It shows the timing statistics.
+                    timingStatsPredicate   :: Dynamics Bool,
+                    -- ^ Specifies when gathering the statistics.
                     timingStatsSeries      :: [String] 
                     -- ^ It contains the labels of the observed series.
                   }
@@ -63,8 +65,9 @@ defaultTimingStatsView :: TimingStatsView
 defaultTimingStatsView =  
   TimingStatsView { timingStatsTitle       = "Timing Statistics",
                     timingStatsRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
-                    timingStatsDescription = [],
+                    timingStatsDescription = "This statistics is gathered in the time points.",
                     timingStatsWriter      = defaultTimingStatsWriter,
+                    timingStatsPredicate   = return True,
                     timingStatsSeries      = [] }
 
 instance View TimingStatsView where  
@@ -107,6 +110,7 @@ simulateTimingStats st expdata =
                         providerName provider ++ 
                         " as double values: simulateTimingStats"
              Just input -> (provider, input)
+         predicate = timingStatsPredicate $ timingStatsView st
      i <- liftSimulation simulationIndex
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
      t <- time
@@ -117,11 +121,13 @@ simulateTimingStats st expdata =
             do stats <- liftIO $ newIORef emptyTimingStats
                let name = providerName provider
                liftIO $ modifyIORef r ((:) (name, stats))
+               let h = filterSignalM (const predicate) $
+                       experimentMixedSignal expdata [provider]
                enqueue (experimentQueue expdata) t $
                  -- we must subscribe through the event queue;
                  -- otherwise, we will loose a signal in the start time,
                  -- because the handleSignal_ function checks the event queue
-                 handleSignal_ (experimentMixedSignal expdata [provider]) $ \_ ->
+                 handleSignal_ h $ \_ ->
                  do t <- time
                     x <- input
                     liftIO $ modifyIORef stats $ addTimingStats t x

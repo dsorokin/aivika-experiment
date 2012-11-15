@@ -30,6 +30,8 @@ library
                      Simulation.Aivika.Experiment.TableView
                      Simulation.Aivika.Experiment.TimingStatsView
                      Simulation.Aivika.Experiment.TimingStatsWriter
+                     Simulation.Aivika.Experiment.SamplingStatsWriter
+                     Simulation.Aivika.Experiment.FinalStatsView
                      Simulation.Aivika.Experiment.Histogram
                      Simulation.Aivika.Experiment.Utils
                      

@@ -31,6 +31,7 @@ import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.LastValueView
 import Simulation.Aivika.Experiment.TableView
 import Simulation.Aivika.Experiment.TimingStatsView
+import Simulation.Aivika.Experiment.FinalStatsView
 
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
@@ -53,16 +54,12 @@ experiment =
     experimentDescription = description,
     experimentGenerators =
       [outputView $ defaultLastValueView {
-          lastValueDescription = 
-             "It shows the last value of " ++
-             "the proportion of up time.",
           lastValueSeries = ["x"] },
        outputView $ defaultTimingStatsView {
          timingStatsSeries = ["x"] },
+       outputView $ defaultFinalStatsView {
+         finalStatsSeries = ["x"] },
        outputView $ defaultTableView {
-         tableDescription = 
-            "These are tables for " ++
-            "the proportion of up time.",
          tableSeries = ["x"] } ] }
 
 upRate = 1.0 / 1.0       -- reciprocal of mean up time

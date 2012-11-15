@@ -61,7 +61,7 @@ defaultLastValueView :: LastValueView
 defaultLastValueView =  
   LastValueView { lastValueTitle       = "The Last Values",
                   lastValueRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
-                  lastValueDescription = [],
+                  lastValueDescription = "It shows the values in the final time points.",
                   lastValueFormatter   = id,
                   lastValueSeries      = [] }
   
