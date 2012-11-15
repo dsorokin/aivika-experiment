@@ -58,7 +58,7 @@ defaultTimingStatsWriter =
       do let format x = (timingStatsFormatter writer) (show x)
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
-         writeHtml $ format $ timingStatsWidth writer
+         writeHtml $ show $ timingStatsWidth writer
          writeHtml "'>"
          writeHtml "<tr>"
          writeHtml "<td colspan='3'>"
