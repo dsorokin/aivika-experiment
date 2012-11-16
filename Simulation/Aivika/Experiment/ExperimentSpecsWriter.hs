@@ -67,7 +67,7 @@ defaultExperimentSpecsWriter =
     experimentSpecsRungeKutta4Text = "the 4-th order Runge-Kutta",
     experimentSpecsFormatter = id,
     experimentSpecsWrite = \writer exp ->
-      do let format x = (experimentSpecsFormatter writer) (show x)
+      do let format x = experimentSpecsFormatter writer (show x)
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ experimentSpecsWidth writer

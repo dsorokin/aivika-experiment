@@ -177,7 +177,7 @@ simulateFinalTable st expdata =
           -- because the handleSignal_ function checks the event queue
           handleSignal_ h $ \_ ->
             do xs <- sequence input
-               i  <- liftSimulation $ simulationIndex
+               i  <- liftSimulation simulationIndex
                liftIO $ withMVar lock $ \() ->
                  modifyIORef values $ M.insert i xs
      return $ return ()

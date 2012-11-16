@@ -55,7 +55,7 @@ defaultTimingStatsWriter =
     timingStatsMaxText = "maximum",
     timingStatsFormatter = id,
     timingStatsWrite = \writer name stats ->
-      do let format x = (timingStatsFormatter writer) (show x)
+      do let format x = timingStatsFormatter writer (show x)
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ timingStatsWidth writer

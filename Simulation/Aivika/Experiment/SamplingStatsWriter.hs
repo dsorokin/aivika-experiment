@@ -55,7 +55,7 @@ defaultSamplingStatsWriter =
     samplingStatsCountText = "count",
     samplingStatsFormatter = id,
     samplingStatsWrite = \writer name stats ->
-      do let format x = (samplingStatsFormatter writer) (show x)
+      do let format x = samplingStatsFormatter writer (show x)
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ samplingStatsWidth writer
