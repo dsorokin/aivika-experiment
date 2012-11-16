@@ -32,6 +32,7 @@ import Simulation.Aivika.Experiment.LastValueView
 import Simulation.Aivika.Experiment.TableView
 import Simulation.Aivika.Experiment.TimingStatsView
 import Simulation.Aivika.Experiment.FinalStatsView
+import Simulation.Aivika.Experiment.ExperimentSpecsView
 
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
@@ -53,8 +54,9 @@ experiment =
     experimentRunCount = 3,
     experimentDescription = description,
     experimentGenerators =
-      [outputView $ defaultLastValueView {
-          lastValueSeries = ["x"] },
+      [outputView $ defaultExperimentSpecsView,
+       outputView $ defaultLastValueView {
+         lastValueSeries = ["x"] },
        outputView $ defaultTimingStatsView {
          timingStatsSeries = ["x"] },
        outputView $ defaultFinalStatsView {

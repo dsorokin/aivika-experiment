@@ -33,6 +33,8 @@ library
                      Simulation.Aivika.Experiment.SamplingStatsWriter
                      Simulation.Aivika.Experiment.FinalStatsView
                      Simulation.Aivika.Experiment.Histogram
+                     Simulation.Aivika.Experiment.ExperimentSpecsView
+                     Simulation.Aivika.Experiment.ExperimentSpecsWriter
                      Simulation.Aivika.Experiment.Utils
                      
     build-depends:   base >= 3 && < 6,
