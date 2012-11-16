@@ -72,7 +72,7 @@ data FinalTableView =
                    finalTableFormatter   :: ShowS,
                    -- ^ It defines the formatter which is applied
                    -- to all values before they will be written
-                   -- in the CSV file(s).
+                   -- in the CSV file.
                    finalTablePredicate   :: Dynamics Bool,
                    -- ^ It specifies the predicate that defines
                    -- when we can save data in the table.
