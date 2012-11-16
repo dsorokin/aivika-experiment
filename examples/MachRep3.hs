@@ -55,7 +55,7 @@ experiment =
     experimentRunCount = 3,
     experimentDescription = description,
     experimentGenerators =
-      [outputView $ defaultExperimentSpecsView,
+      [outputView defaultExperimentSpecsView,
        outputView $ defaultLastValueView {
          lastValueSeries = ["x"] },
        outputView $ defaultTimingStatsView {
