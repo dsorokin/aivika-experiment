@@ -65,7 +65,7 @@ defaultTimingStatsView :: TimingStatsView
 defaultTimingStatsView =  
   TimingStatsView { timingStatsTitle       = "Timing Statistics",
                     timingStatsRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
-                    timingStatsDescription = "This statistics is gathered in the time points.",
+                    timingStatsDescription = "The statistical data are gathered in the time points.",
                     timingStatsWriter      = defaultTimingStatsWriter,
                     timingStatsPredicate   = return True,
                     timingStatsSeries      = [] }

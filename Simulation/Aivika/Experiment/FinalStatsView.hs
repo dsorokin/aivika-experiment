@@ -54,7 +54,7 @@ data FinalStatsView =
 defaultFinalStatsView :: FinalStatsView
 defaultFinalStatsView = 
   FinalStatsView { finalStatsTitle       = "Final Statistics",
-                   finalStatsDescription = "This statistics is gathered in the final time points for all runs.",
+                   finalStatsDescription = "The statistical data are gathered in the final time points for all runs.",
                    finalStatsWriter      = defaultSamplingStatsWriter,
                    finalStatsPredicate   = return True,
                    finalStatsSeries      = [] }
