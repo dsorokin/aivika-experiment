@@ -130,7 +130,10 @@ simulateTimingStats st expdata =
                  handleSignal_ h $ \_ ->
                  do t <- time
                     x <- input
-                    liftIO $ modifyIORef stats $ addTimingStats t x
+                    liftIO $
+                      do y <- readIORef stats
+                         let y' = addTimingStats t x y
+                         y' `seq` writeIORef stats y'
      return $ return ()
      
 -- | Get the HTML code.     

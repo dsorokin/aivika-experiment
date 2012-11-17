@@ -141,7 +141,9 @@ simulateFinalStats st expdata =
             do xs <- sequence input
                liftIO $ withMVar lock $ \() ->
                  forM_ (zip xs values) $ \(x, values) ->
-                 modifyIORef values $ addSamplingStats x
+                 do y <- readIORef values
+                    let y' = addSamplingStats x y
+                    y' `seq` writeIORef values y'
      return $ return ()
 
 -- | Get the HTML code.     
