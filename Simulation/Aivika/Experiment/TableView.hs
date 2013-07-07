@@ -25,10 +25,9 @@ import Data.Maybe
 import System.IO
 import System.FilePath
 
-import Data.String.Utils (replace)
-
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Utils (replace)
 
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation

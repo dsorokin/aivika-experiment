@@ -11,7 +11,10 @@
 --
 
 module Simulation.Aivika.Experiment.Utils
-       (divideBy) where
+       (divideBy, replace) where
+
+import Data.List
+import Data.List.Split
 
 -- | Divide into the groups removing those elements
 -- that satisfy the predicate.
@@ -21,3 +24,7 @@ divideBy p xs =
     []  -> []
     xs' -> ys : divideBy p xs''
            where (ys, xs'') = break p xs'
+
+-- | Replace the string.
+replace :: String -> String -> String -> String
+replace old new = intercalate new . splitOn old

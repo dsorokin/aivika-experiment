@@ -47,7 +47,6 @@ import qualified Data.Map as M
 import Data.Array
 import Data.Maybe
 import Data.Monoid
-import Data.String.Utils (replace)
 
 import qualified System.IO.UTF8 as UTF8
 import System.Directory
@@ -65,6 +64,7 @@ import Simulation.Aivika.Dynamics.EventQueue
 import Simulation.Aivika.Dynamics.Parameter
 
 import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Utils (replace)
 
 -- | It defines the simulation experiment.
 data Experiment = 

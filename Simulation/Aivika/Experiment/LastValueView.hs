@@ -22,10 +22,9 @@ import qualified Data.Map as M
 import Data.IORef
 import Data.Maybe
 
-import Data.String.Utils (replace)
-
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Utils (replace)
 
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation
