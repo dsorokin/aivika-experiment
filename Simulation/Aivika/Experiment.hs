@@ -31,6 +31,10 @@ module Simulation.Aivika.Experiment
         Series(..),
         SeriesEntity(..),
         SeriesProvider(..),
+        SeriesListWithSubscript,
+        SeriesArrayWithSubscript,
+        seriesListWithSubscript,
+        seriesArrayWithSubscript,
         View(..),
         Generator(..),
         Reporter(..),
@@ -537,3 +541,42 @@ instance (Show i, Ix i, Series s) => Series (Array i s) where
                       join $ forM (assocs s) $ \(i, s) ->
                       let name' = name ++ "[" ++ show i ++ "]"
                       in seriesProviders $ seriesEntity name' s }
+
+-- | Represents a list with the specified subscript.
+data SeriesListWithSubscript s =
+  SeriesListWithSubscript { seriesList          :: [s],
+                            seriesListSubscript :: [String] }
+
+-- | Represents an array with the specified subscript.
+data SeriesArrayWithSubscript i s =
+  SeriesArrayWithSubscript { seriesArray          :: Array i s,
+                             seriesArraySubscript :: Array i String }
+
+-- | Add the specified subscript to the list.
+seriesListWithSubscript :: Series s => [s] -> [String] -> SeriesListWithSubscript s
+seriesListWithSubscript = SeriesListWithSubscript
+
+-- | Add the specified subscript to the array.
+seriesArrayWithSubscript :: (Ix i, Series s) => Array i s -> Array i String
+                            -> SeriesArrayWithSubscript i s
+seriesArrayWithSubscript = SeriesArrayWithSubscript
+
+instance Series s => Series (SeriesListWithSubscript s) where
+  
+  seriesEntity name s = 
+    SeriesEntity { seriesProviders = do
+                      let xs = seriesList s
+                          ns = seriesListSubscript s
+                      join $ forM (zip3 [1..] xs ns) $ \(i, s, n) ->
+                        let name' = name ++ "[" ++ n ++ "]"
+                        in seriesProviders $ seriesEntity name' s }
+    
+instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders = do
+                      let xs = seriesArray s
+                          ns = seriesArraySubscript s
+                      join $ forM (zip (assocs xs) (elems ns)) $ \((i, s), n) ->
+                        let name' = name ++ "[" ++ n ++ "]"
+                        in seriesProviders $ seriesEntity name' s }
