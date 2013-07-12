@@ -568,7 +568,7 @@ instance Series s => Series (SeriesListWithSubscript s) where
                       let xs = seriesList s
                           ns = seriesListSubscript s
                       join $ forM (zip3 [1..] xs ns) $ \(i, s, n) ->
-                        let name' = name ++ "[" ++ n ++ "]"
+                        let name' = name ++ n
                         in seriesProviders $ seriesEntity name' s }
     
 instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
@@ -578,5 +578,5 @@ instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
                       let xs = seriesArray s
                           ns = seriesArraySubscript s
                       join $ forM (zip (assocs xs) (elems ns)) $ \((i, s), n) ->
-                        let name' = name ++ "[" ++ n ++ "]"
+                        let name' = name ++ n
                         in seriesProviders $ seriesEntity name' s }
