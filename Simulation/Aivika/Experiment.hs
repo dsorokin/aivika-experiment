@@ -66,6 +66,7 @@ import Simulation.Aivika.Dynamics.Var
 import Simulation.Aivika.Dynamics.UVar
 import Simulation.Aivika.Dynamics.EventQueue
 import Simulation.Aivika.Dynamics.Parameter
+import Simulation.Aivika.Statistics
 
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
@@ -122,6 +123,21 @@ class View v where
 -- | Represents the series. It is usually something, or
 -- an array of something, or a list of such values which
 -- can be simulated.
+--
+-- The array and list of series are treated as a sequence of
+-- separate sub-series that have a subscript which can be
+-- optionally specified explicitly. By default, the subscript
+-- is numeric but it may be any string.
+--  
+-- At the same time, if the array or list of numeric values
+-- is wrapped in monad 'Simulation' or 'Dynamics' then the
+-- underlying numeric array and list are already treated as
+-- a sampling statistics or list of numbers in time point.
+--
+-- Moreover, if the array or list of numbers is contained in
+-- reference 'Ref' or variable 'Var' then the array and list
+-- of such values are also treated as a sampling statistics
+-- or list of numbers in time point.
 class Series s where
   
   -- | Return the simulatable entity with the specified name
@@ -140,8 +156,12 @@ data SeriesProvider =
                    -- ^ Return the name.
                    providerToDouble :: Maybe (Dynamics Double),
                    -- ^ Try to return the data as double values.
+                   providerToDoubleStats :: Maybe (Dynamics (SamplingStats Double)),
+                   -- ^ Try to return the statistics data in time points.
                    providerToInt :: Maybe (Dynamics Int),
                    -- ^ Try to return the data as integers.
+                   providerToIntStats :: Maybe (Dynamics (SamplingStats Int)),
+                   -- ^ Try to return the statistics data in time points.
                    providerToString :: Maybe (Dynamics String),
                    -- ^ Try to return the data as strings.
                    providerSignal :: Maybe (Signal ())
@@ -392,7 +412,10 @@ instance Series (Simulation Double) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ liftSimulation s,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $ fmap returnSamplingStats s,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ liftSimulation $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -402,7 +425,13 @@ instance Series (Simulation Int) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ liftSimulation $ fmap fromIntegral s,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap returnSamplingStats $
+                                          fmap fromIntegral s,
                                         providerToInt    = Just $ liftSimulation s,
+                                        providerToIntStats =
+                                          Just $ liftSimulation $ fmap returnSamplingStats s,
                                         providerToString = Just $ liftSimulation $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -412,7 +441,9 @@ instance Series (Simulation String) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
+                                        providerToDoubleStats = Nothing,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ liftSimulation s,
                                         providerSignal   = Nothing }] }
 
@@ -422,7 +453,9 @@ instance Series (Dynamics Double) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just s,
+                                        providerToDoubleStats = Just $ fmap returnSamplingStats s,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -432,7 +465,10 @@ instance Series (Dynamics Int) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ fmap fromIntegral s,
+                                        providerToDoubleStats =
+                                          Just $ fmap returnSamplingStats $ fmap fromIntegral s,
                                         providerToInt    = Just s,
+                                        providerToIntStats = Just $ fmap returnSamplingStats s,
                                         providerToString = Just $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -442,7 +478,9 @@ instance Series (Dynamics String) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
+                                        providerToDoubleStats = Nothing,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just s,
                                         providerSignal   = Nothing }] }
 
@@ -452,7 +490,10 @@ instance Series (Ref Double) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ readRef s,
+                                        providerToDoubleStats =
+                                          Just $ fmap returnSamplingStats $ readRef s,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ fmap show (readRef s),
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -462,7 +503,13 @@ instance Series (Ref Int) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ fmap fromIntegral (readRef s),
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap returnSamplingStats $
+                                          fmap fromIntegral (readRef s),
                                         providerToInt    = Just $ readRef s,
+                                        providerToIntStats =
+                                          Just $ fmap returnSamplingStats (readRef s),
                                         providerToString = Just $ fmap show (readRef s),
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -472,7 +519,9 @@ instance Series (Ref String) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
+                                        providerToDoubleStats = Nothing,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ readRef s,
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -482,7 +531,10 @@ instance Series (Var Double) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ readVar s,
+                                        providerToDoubleStats =
+                                          Just $ fmap returnSamplingStats $ readVar s,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ fmap show (readVar s),
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -492,7 +544,13 @@ instance Series (Var Int) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ fmap fromIntegral (readVar s),
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap returnSamplingStats $
+                                          fmap fromIntegral (readVar s),
                                         providerToInt    = Just $ readVar s,
+                                        providerToIntStats =
+                                          Just $ fmap returnSamplingStats (readVar s),
                                         providerToString = Just $ fmap show (readVar s),
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -502,7 +560,9 @@ instance Series (Var String) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
+                                        providerToDoubleStats = Nothing,
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ readVar s,
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -512,7 +572,10 @@ instance Series (UVar Double) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ readUVar s,
+                                        providerToDoubleStats =
+                                          Just $ fmap returnSamplingStats (readUVar s),
                                         providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
                                         providerToString = Just $ fmap show (readUVar s),
                                         providerSignal   = Just $ uvarChanged_ s }] }
 
@@ -522,7 +585,13 @@ instance Series (UVar Int) where
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just $ fmap fromIntegral (readUVar s),
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap returnSamplingStats $
+                                          fmap fromIntegral (readUVar s),
                                         providerToInt    = Just $ readUVar s,
+                                        providerToIntStats =
+                                          Just $ fmap returnSamplingStats (readUVar s),
                                         providerToString = Just $ fmap show (readUVar s),
                                         providerSignal   = Just $ uvarChanged_ s }] }
     
@@ -580,3 +649,356 @@ instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
                       join $ forM (zip (assocs xs) (elems ns)) $ \((i, s), n) ->
                         let name' = name ++ n
                         in seriesProviders $ seriesEntity name' s }
+
+instance Series (Simulation (SamplingStats Double)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats = Just $ liftSimulation s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation (SamplingStats Int)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $ fmap fromIntSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Just $ liftSimulation s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (SamplingStats Double)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats = Just s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (SamplingStats Int)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats = Just $ fmap fromIntSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Just $ s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (SamplingStats Double)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats = Just $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (SamplingStats Int)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ fmap fromIntSamplingStats $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Just $ readRef s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (SamplingStats Double)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats = Just $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (SamplingStats Int)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ fmap fromIntSamplingStats $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Just $ readVar s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation [Double]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $ fmap listSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation [Int]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ liftSimulation $ fmap listSamplingStats s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics [Double]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ fmap listSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics [Int]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ fmap listSamplingStats s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref [Double]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ fmap listSamplingStats $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref [Int]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ fmap listSamplingStats $ readRef s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var [Double]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ fmap listSamplingStats $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var [Int]) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ fmap listSamplingStats $ readVar s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Simulation (Array i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Simulation (Array i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Dynamics (Array i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Dynamics (Array i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+
+instance Ix i => Series (Ref (Array i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Ref (Array i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readRef s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+
+instance Ix i => Series (Var (Array i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Ix i => Series (Var (Array i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap elems $ readVar s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
