@@ -158,10 +158,14 @@ data SeriesProvider =
                    -- ^ Try to return the data as double values.
                    providerToDoubleStats :: Maybe (Dynamics (SamplingStats Double)),
                    -- ^ Try to return the statistics data in time points.
+                   providerToDoubleList :: Maybe (Dynamics [Double]),
+                   -- ^ Try to return the list of double values.
                    providerToInt :: Maybe (Dynamics Int),
                    -- ^ Try to return the data as integers.
                    providerToIntStats :: Maybe (Dynamics (SamplingStats Int)),
                    -- ^ Try to return the statistics data in time points.
+                   providerToIntList :: Maybe (Dynamics [Int]),
+                   -- ^ Try to return the list of integer values.
                    providerToString :: Maybe (Dynamics String),
                    -- ^ Try to return the data as strings.
                    providerSignal :: Maybe (Signal ())
@@ -414,8 +418,11 @@ instance Series (Simulation Double) where
                                         providerToDouble = Just $ liftSimulation s,
                                         providerToDoubleStats =
                                           Just $ liftSimulation $ fmap returnSamplingStats s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $ fmap return s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ liftSimulation $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -429,9 +436,15 @@ instance Series (Simulation Int) where
                                           Just $ liftSimulation $
                                           fmap returnSamplingStats $
                                           fmap fromIntegral s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap return $
+                                          fmap fromIntegral s,
                                         providerToInt    = Just $ liftSimulation s,
                                         providerToIntStats =
                                           Just $ liftSimulation $ fmap returnSamplingStats s,
+                                        providerToIntList =
+                                          Just $ liftSimulation $ fmap return s,
                                         providerToString = Just $ liftSimulation $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -442,8 +455,10 @@ instance Series (Simulation String) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Nothing,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ liftSimulation s,
                                         providerSignal   = Nothing }] }
 
@@ -454,8 +469,10 @@ instance Series (Dynamics Double) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Just s,
                                         providerToDoubleStats = Just $ fmap returnSamplingStats s,
+                                        providerToDoubleList = Just $ fmap return s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -467,8 +484,11 @@ instance Series (Dynamics Int) where
                                         providerToDouble = Just $ fmap fromIntegral s,
                                         providerToDoubleStats =
                                           Just $ fmap returnSamplingStats $ fmap fromIntegral s,
+                                        providerToDoubleList =
+                                          Just $ fmap return $ fmap fromIntegral s,
                                         providerToInt    = Just s,
                                         providerToIntStats = Just $ fmap returnSamplingStats s,
+                                        providerToIntList = Just $ fmap return s,
                                         providerToString = Just $ fmap show s,
                                         providerSignal   = Nothing }] }
 
@@ -479,8 +499,10 @@ instance Series (Dynamics String) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Nothing,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just s,
                                         providerSignal   = Nothing }] }
 
@@ -492,8 +514,11 @@ instance Series (Ref Double) where
                                         providerToDouble = Just $ readRef s,
                                         providerToDoubleStats =
                                           Just $ fmap returnSamplingStats $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ fmap return $ readRef s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ fmap show (readRef s),
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -507,9 +532,15 @@ instance Series (Ref Int) where
                                           Just $
                                           fmap returnSamplingStats $
                                           fmap fromIntegral (readRef s),
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap return $
+                                          fmap fromIntegral (readRef s),
                                         providerToInt    = Just $ readRef s,
                                         providerToIntStats =
                                           Just $ fmap returnSamplingStats (readRef s),
+                                        providerToIntList =
+                                          Just $ fmap return (readRef s),
                                         providerToString = Just $ fmap show (readRef s),
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -520,8 +551,10 @@ instance Series (Ref String) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Nothing,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ readRef s,
                                         providerSignal   = Just $ refChanged_ s }] }
 
@@ -533,8 +566,11 @@ instance Series (Var Double) where
                                         providerToDouble = Just $ readVar s,
                                         providerToDoubleStats =
                                           Just $ fmap returnSamplingStats $ readVar s,
+                                        providerToDoubleList =
+                                          Just $ fmap return $ readVar s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ fmap show (readVar s),
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -548,9 +584,15 @@ instance Series (Var Int) where
                                           Just $
                                           fmap returnSamplingStats $
                                           fmap fromIntegral (readVar s),
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap return $
+                                          fmap fromIntegral (readVar s),
                                         providerToInt    = Just $ readVar s,
                                         providerToIntStats =
                                           Just $ fmap returnSamplingStats (readVar s),
+                                        providerToIntList =
+                                          Just $ fmap return (readVar s),
                                         providerToString = Just $ fmap show (readVar s),
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -561,8 +603,10 @@ instance Series (Var String) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Nothing,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ readVar s,
                                         providerSignal   = Just $ varChanged_ s }] }
 
@@ -574,8 +618,11 @@ instance Series (UVar Double) where
                                         providerToDouble = Just $ readUVar s,
                                         providerToDoubleStats =
                                           Just $ fmap returnSamplingStats (readUVar s),
+                                        providerToDoubleList =
+                                          Just $ fmap return (readUVar s),
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Just $ fmap show (readUVar s),
                                         providerSignal   = Just $ uvarChanged_ s }] }
 
@@ -589,9 +636,15 @@ instance Series (UVar Int) where
                                           Just $
                                           fmap returnSamplingStats $
                                           fmap fromIntegral (readUVar s),
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap return $
+                                          fmap fromIntegral (readUVar s),
                                         providerToInt    = Just $ readUVar s,
                                         providerToIntStats =
                                           Just $ fmap returnSamplingStats (readUVar s),
+                                        providerToIntList =
+                                          Just $ fmap return (readUVar s),
                                         providerToString = Just $ fmap show (readUVar s),
                                         providerSignal   = Just $ uvarChanged_ s }] }
     
@@ -657,8 +710,10 @@ instance Series (Simulation (SamplingStats Double)) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Just $ liftSimulation s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -670,8 +725,10 @@ instance Series (Simulation (SamplingStats Int)) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ liftSimulation $ fmap fromIntSamplingStats s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Just $ liftSimulation s,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -682,8 +739,10 @@ instance Series (Dynamics (SamplingStats Double)) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Just s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -694,8 +753,10 @@ instance Series (Dynamics (SamplingStats Int)) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Just $ fmap fromIntSamplingStats s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Just $ s,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -706,8 +767,10 @@ instance Series (Ref (SamplingStats Double)) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Just $ readRef s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -719,8 +782,10 @@ instance Series (Ref (SamplingStats Int)) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ fmap fromIntSamplingStats $ readRef s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Just $ readRef s,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -731,8 +796,10 @@ instance Series (Var (SamplingStats Double)) where
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Just $ readVar s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -744,8 +811,10 @@ instance Series (Var (SamplingStats Int)) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ fmap fromIntSamplingStats $ readVar s,
+                                        providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Just $ readVar s,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -757,8 +826,11 @@ instance Series (Simulation [Double]) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ liftSimulation $ fmap listSamplingStats s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -772,9 +844,14 @@ instance Series (Simulation [Int]) where
                                           Just $ liftSimulation $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap (map fromIntegral) s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $ liftSimulation $ fmap listSamplingStats s,
+                                        providerToIntList =
+                                          Just $ liftSimulation s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -786,8 +863,11 @@ instance Series (Dynamics [Double]) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ fmap listSamplingStats s,
+                                        providerToDoubleList =
+                                          Just s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -801,9 +881,13 @@ instance Series (Dynamics [Int]) where
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats s,
+                                        providerToDoubleList =
+                                          Just $ fmap (map fromIntegral) s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $ fmap listSamplingStats s,
+                                        providerToIntList =
+                                          Just s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -815,8 +899,11 @@ instance Series (Ref [Double]) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ fmap listSamplingStats $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ readRef s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -830,9 +917,13 @@ instance Series (Ref [Int]) where
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ fmap (map fromIntegral) $ readRef s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $ fmap listSamplingStats $ readRef s,
+                                        providerToIntList =
+                                          Just $ readRef s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -844,8 +935,11 @@ instance Series (Var [Double]) where
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $ fmap listSamplingStats $ readVar s,
+                                        providerToDoubleList =
+                                          Just $ readVar s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -859,9 +953,13 @@ instance Series (Var [Int]) where
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $ readVar s,
+                                        providerToDoubleList =
+                                          Just $ fmap (map fromIntegral) $ readVar s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $ fmap listSamplingStats $ readVar s,
+                                        providerToIntList =
+                                          Just $ readVar s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -875,8 +973,12 @@ instance Ix i => Series (Simulation (Array i Double)) where
                                           Just $ liftSimulation $
                                           fmap listSamplingStats $
                                           fmap elems s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap elems s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -891,10 +993,17 @@ instance Ix i => Series (Simulation (Array i Int)) where
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
                                           fmap elems s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap (map fromIntegral) $
+                                          fmap elems s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $ liftSimulation $
                                           fmap listSamplingStats $
+                                          fmap elems s,
+                                        providerToIntList =
+                                          Just $ liftSimulation $
                                           fmap elems s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
@@ -909,8 +1018,11 @@ instance Ix i => Series (Dynamics (Array i Double)) where
                                           Just $
                                           fmap listSamplingStats $
                                           fmap elems s,
+                                        providerToDoubleList =
+                                          Just $ fmap elems s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -925,11 +1037,17 @@ instance Ix i => Series (Dynamics (Array i Int)) where
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
                                           fmap elems s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap elems s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
                                           fmap elems s,
+                                        providerToIntList =
+                                          Just $ fmap elems s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -944,8 +1062,11 @@ instance Ix i => Series (Ref (Array i Double)) where
                                           Just $
                                           fmap listSamplingStats $
                                           fmap elems $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ fmap elems $ readRef s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -960,10 +1081,17 @@ instance Ix i => Series (Ref (Array i Int)) where
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
                                           fmap elems $ readRef s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap elems $ readRef s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
+                                          fmap elems $ readRef s,
+                                        providerToIntList =
+                                          Just $
                                           fmap elems $ readRef s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
@@ -979,8 +1107,12 @@ instance Ix i => Series (Var (Array i Double)) where
                                           Just $
                                           fmap listSamplingStats $
                                           fmap elems $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap elems $ readVar s,
                                         providerToInt    = Nothing,
                                         providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
@@ -995,10 +1127,17 @@ instance Ix i => Series (Var (Array i Int)) where
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
                                           fmap elems $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap elems $ readVar s,
                                         providerToInt    = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
+                                          fmap elems $ readVar s,
+                                        providerToIntList =
+                                          Just $
                                           fmap elems $ readVar s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
