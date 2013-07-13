@@ -14,6 +14,7 @@ module Simulation.Aivika.Experiment.SamplingStatsSource
        (SamplingStatsSource,
         providerToDoubleStatsSource,
         providerToIntStatsSource,
+        SamplingStatsData,
         samplingStatsSourceData,
         addDataToSamplingStats) where
 
