@@ -25,6 +25,7 @@ import Data.Maybe
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.SamplingStatsWriter
+import Simulation.Aivika.Experiment.SamplingStatsSource
 
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Dynamics.Simulation
@@ -109,12 +110,12 @@ simulateFinalStats st expdata =
          providers = concat protoproviders
          input =
            flip map providers $ \provider ->
-           case providerToDouble provider of
+           case providerToDoubleStatsSource provider of
              Nothing -> error $
                         "Cannot represent series " ++
                         providerName provider ++ 
-                        " as double values: simulateFinalStats"
-             Just input -> input
+                        " as a source of double values: simulateFinalStats"
+             Just input -> samplingStatsSourceData input
          names = map providerName providers
          predicate = finalStatsPredicate $ finalStatsView st
          exp = finalStatsExperiment st
@@ -142,7 +143,7 @@ simulateFinalStats st expdata =
                liftIO $ withMVar lock $ \() ->
                  forM_ (zip xs values) $ \(x, values) ->
                  do y <- readIORef values
-                    let y' = addSamplingStats x y
+                    let y' = addDataToSamplingStats x y
                     y' `seq` writeIORef values y'
      return $ return ()
 
