@@ -37,6 +37,7 @@ library
                      Simulation.Aivika.Experiment.ExperimentSpecsView
                      Simulation.Aivika.Experiment.ExperimentSpecsWriter
                      Simulation.Aivika.Experiment.FinalTableView
+                     Simulation.Aivika.Experiment.ListSource
                      Simulation.Aivika.Experiment.Utils
                      
     build-depends:   base >= 3 && < 6,
