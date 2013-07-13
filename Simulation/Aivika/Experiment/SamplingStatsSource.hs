@@ -27,7 +27,7 @@ data SamplingStatsSource a = SingleValueSource (Dynamics a)
                            | MultipleValueSource (Dynamics (SamplingStats a))
 
 -- | Represents the optimized data to be included in the statistics.
-data SamplingStatsData a = SingleValueData a
+data SamplingStatsData a = SingleValueData !a
                          | MultipleValueData (SamplingStats a)
 
 -- | Try to return the source of statistical data by the specified provider.
