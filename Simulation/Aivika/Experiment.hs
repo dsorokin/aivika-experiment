@@ -87,9 +87,12 @@ data Experiment =
                -- ^ Whether the process of generating the results is verbose.
                experimentGenerators    :: [Generator], 
                -- ^ The experiment generators.
-               experimentIndexHtml     :: Experiment -> [Reporter] -> FilePath -> IO ()
+               experimentIndexHtml     :: Experiment -> [Reporter] -> FilePath -> IO (),
                -- ^ Create the @index.html@ file after the simulation is finished
-               -- in the specified directory. 
+               -- in the specified directory.
+               experimentNumCapabilities :: IO Int
+               -- ^ The number of threads used for the Monte-Carlo simulation
+               -- if the executable was compiled with the support of multi-threading.
              }
 
 -- | The default experiment.
@@ -102,7 +105,8 @@ defaultExperiment =
                experimentDescription   = "",
                experimentVerbose       = True,
                experimentGenerators    = [], 
-               experimentIndexHtml     = createIndexHtml }
+               experimentIndexHtml     = createIndexHtml,
+               experimentNumCapabilities = getNumCapabilities }
 
 -- | This is a generator of the reporter.                     
 data Generator = 
@@ -278,10 +282,15 @@ runExperiment = runExperimentWithExecutor sequence_
 -- or you won't get any parallelism. Generally, the mentioned 
 -- @N@ parameter should correspond to the number of cores for 
 -- your processor.
+--
+-- In case of need you might want to specify the number of
+-- threads directly with help of 'experimentNumCapabilities',
+-- although the real number of parallel threads can depend on many
+-- factors.
 runExperimentParallel :: Experiment -> Simulation ExperimentData -> IO ()
-runExperimentParallel = runExperimentWithExecutor executor 
+runExperimentParallel e = runExperimentWithExecutor executor e 
   where executor tasks =
-          do n <- getNumCapabilities
+          do n <- experimentNumCapabilities e
              withPool n $ \pool ->
                parallel_ pool tasks
                         
