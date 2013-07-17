@@ -172,7 +172,7 @@ simulateTable st expdata =
        do forM_ (zip [0..] providers) $ \(column, provider) ->
             do when (column > 0) $ 
                  hPutStr h separator
-               hPutStr h $ providerName provider
+               hPutStr h $ show $ providerName provider
           hPutStrLn h ""
      t <- time
      enqueue (experimentQueue expdata) t $

@@ -203,10 +203,10 @@ finaliseFinalTable st =
             -- create a new file
             h <- liftIO $ openFile file WriteMode
             -- write a header
-            hPutStr h run
+            hPutStr h $ show run
             forM_ names $ \name ->
               do hPutStr h separator
-                 hPutStr h name
+                 hPutStr h $ show name
             hPutStrLn h ""
             -- write data
             forM_ (M.assocs m) $ \(i, xs) ->
