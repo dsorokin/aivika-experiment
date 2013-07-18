@@ -29,6 +29,7 @@ module Simulation.Aivika.Experiment
         experimentSeriesProviders,
         experimentMixedSignal,
         Series(..),
+        SeriesContainer(..),
         SeriesEntity(..),
         SeriesProvider(..),
         SeriesListWithSubscript,
@@ -47,13 +48,20 @@ module Simulation.Aivika.Experiment
 
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Identity
 import Control.Concurrent.ParallelIO.Local
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as UV
+import qualified Data.Array as A
+import qualified Data.Array.Unboxed as UA
 
-import Data.Array
+import Data.Array (Array)
+import Data.Array.Unboxed (UArray)
+import Data.Array.IO
+
+import Data.Ix
 import Data.Maybe
 import Data.Monoid
 
@@ -424,205 +432,124 @@ combineName dir name =
     Nothing  -> name
     Just dir -> combine dir name
 
-instance Series (Simulation Double) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ liftSimulation s,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $ fmap returnSamplingStats s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $ fmap return s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ liftSimulation $ fmap show s,
-                                        providerSignal   = Nothing }] }
+-- | Represent a container for simulation data.
+class SeriesContainer c where
 
-instance Series (Simulation Int) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ liftSimulation $ fmap fromIntegral s,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap returnSamplingStats $
-                                          fmap fromIntegral s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap return $
-                                          fmap fromIntegral s,
-                                        providerToInt    = Just $ liftSimulation s,
-                                        providerToIntStats =
-                                          Just $ liftSimulation $ fmap returnSamplingStats s,
-                                        providerToIntList =
-                                          Just $ liftSimulation $ fmap return s,
-                                        providerToString = Just $ liftSimulation $ fmap show s,
-                                        providerSignal   = Nothing }] }
+  -- | Extract data from the container.
+  containerData :: c a -> Dynamics a
 
-instance Series (Simulation String) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Nothing,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ liftSimulation s,
-                                        providerSignal   = Nothing }] }
+  -- | Get the signal for the container.
+  containerSignal :: c a => Maybe (Signal ())
 
-instance Series (Dynamics Double) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just s,
-                                        providerToDoubleStats = Just $ fmap returnSamplingStats s,
-                                        providerToDoubleList = Just $ fmap return s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ fmap show s,
-                                        providerSignal   = Nothing }] }
+instance SeriesContainer Identity where
 
-instance Series (Dynamics Int) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap fromIntegral s,
-                                        providerToDoubleStats =
-                                          Just $ fmap returnSamplingStats $ fmap fromIntegral s,
-                                        providerToDoubleList =
-                                          Just $ fmap return $ fmap fromIntegral s,
-                                        providerToInt    = Just s,
-                                        providerToIntStats = Just $ fmap returnSamplingStats s,
-                                        providerToIntList = Just $ fmap return s,
-                                        providerToString = Just $ fmap show s,
-                                        providerSignal   = Nothing }] }
+  containerData = return . runIdentity
 
-instance Series (Dynamics String) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Nothing,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just s,
-                                        providerSignal   = Nothing }] }
+  containerSignal = const Nothing
 
-instance Series (Ref Double) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ readRef s,
-                                        providerToDoubleStats =
-                                          Just $ fmap returnSamplingStats $ readRef s,
-                                        providerToDoubleList =
-                                          Just $ fmap return $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ fmap show (readRef s),
-                                        providerSignal   = Just $ refChanged_ s }] }
+instance SeriesContainer Simulation where
 
-instance Series (Ref Int) where
+  containerData = liftSimulation
+
+  containerSignal = const Nothing
+
+instance SeriesContainer Dynamics where
+
+  containerData = id
+
+  containerSignal = const Nothing
+
+instance SeriesContainer Ref where
+
+  containerData = readRef
+
+  containerSignal = Just . refChanged_
+
+instance SeriesContainer Var where
+
+  containerData = readVar
+
+  containerSignal = Just . varChanged_
+
+instance SeriesContainer c => Series (c Double) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap fromIntegral (readRef s),
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble =
+                                          Just $
+                                          containerData s,
                                         providerToDoubleStats =
                                           Just $
                                           fmap returnSamplingStats $
-                                          fmap fromIntegral (readRef s),
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
                                           fmap return $
-                                          fmap fromIntegral (readRef s),
-                                        providerToInt    = Just $ readRef s,
-                                        providerToIntStats =
-                                          Just $ fmap returnSamplingStats (readRef s),
-                                        providerToIntList =
-                                          Just $ fmap return (readRef s),
-                                        providerToString = Just $ fmap show (readRef s),
-                                        providerSignal   = Just $ refChanged_ s }] }
-
-instance Series (Ref String) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Nothing,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
-                                        providerToString = Just $ readRef s,
-                                        providerSignal   = Just $ refChanged_ s }] }
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
+                                        providerSignal =
+                                          containerSignal s }] }
 
-instance Series (Var Double) where
+instance SeriesContainer c => Series (c Int) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ readVar s,
-                                        providerToDoubleStats =
-                                          Just $ fmap returnSamplingStats $ readVar s,
-                                        providerToDoubleList =
-                                          Just $ fmap return $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ fmap show (readVar s),
-                                        providerSignal   = Just $ varChanged_ s }] }
-
-instance Series (Var Int) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap fromIntegral (readVar s),
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble =
+                                          Just $
+                                          fmap fromIntegral $
+                                          containerData s,
                                         providerToDoubleStats =
                                           Just $
                                           fmap returnSamplingStats $
-                                          fmap fromIntegral (readVar s),
+                                          fmap fromIntegral $
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
                                           fmap return $
-                                          fmap fromIntegral (readVar s),
-                                        providerToInt    = Just $ readVar s,
+                                          fmap fromIntegral $
+                                          containerData s,
+                                        providerToInt =
+                                          Just $
+                                          containerData s,
                                         providerToIntStats =
-                                          Just $ fmap returnSamplingStats (readVar s),
+                                          Just $
+                                          fmap returnSamplingStats $
+                                          containerData s,
                                         providerToIntList =
-                                          Just $ fmap return (readVar s),
-                                        providerToString = Just $ fmap show (readVar s),
-                                        providerSignal   = Just $ varChanged_ s }] }
+                                          Just $
+                                          fmap return $
+                                          containerData s,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
+                                        providerSignal =
+                                          containerSignal s }] }
 
-instance Series (Var String) where
+instance SeriesContainer c => Series (c String) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
+                      [SeriesProvider { providerName = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats = Nothing,
                                         providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
+                                        providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
-                                        providerToString = Just $ readVar s,
-                                        providerSignal   = Just $ varChanged_ s }] }
+                                        providerToString =
+                                          Just $
+                                          containerData s,
+                                        providerSignal =
+                                          containerSignal s }] }
 
 instance Series (UVar Double) where
   
@@ -674,7 +601,7 @@ instance (Show i, Ix i, Series s) => Series (Array i s) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      join $ forM (assocs s) $ \(i, s) ->
+                      join $ forM (A.assocs s) $ \(i, s) ->
                       let name' = name ++ "[" ++ show i ++ "]"
                       in seriesProviders $ seriesEntity name' s }
 
@@ -731,7 +658,7 @@ instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
     SeriesEntity { seriesProviders = do
                       let xs = seriesArray s
                           ns = seriesArraySubscript s
-                      join $ forM (zip (assocs xs) (elems ns)) $ \((i, s), n) ->
+                      join $ forM (zip (A.assocs xs) (A.elems ns)) $ \((i, s), n) ->
                         let name' = name ++ n
                         in seriesProviders $ seriesEntity name' s }
 
@@ -745,355 +672,144 @@ instance Series s => Series (SeriesVectorWithSubscript s) where
                         let name' = name ++ n
                         in seriesProviders $ seriesEntity name' x }
 
-instance Series (Simulation (SamplingStats Double)) where
+instance SeriesContainer c => Series (c (SamplingStats Double)) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          containerData s,
+                                        providerToDoubleList = Nothing,
+                                        providerToInt = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal =
+                                          containerSignal s } ] }
+
+instance SeriesContainer c => Series (c (SamplingStats Int)) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       [SeriesProvider { providerName     = name,
                                         providerToDouble = Nothing,
-                                        providerToDoubleStats = Just $ liftSimulation s,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          containerData s,
                                         providerToDoubleList = Nothing,
                                         providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation (SamplingStats Int)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $ fmap fromIntSamplingStats s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Just $ liftSimulation s,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (SamplingStats Double)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Just s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (SamplingStats Int)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Just $ fmap fromIntSamplingStats s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Just $ s,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (SamplingStats Double)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Just $ readRef s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (SamplingStats Int)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ fmap fromIntSamplingStats $ readRef s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Just $ readRef s,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (SamplingStats Double)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats = Just $ readVar s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (SamplingStats Int)) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ fmap fromIntSamplingStats $ readVar s,
-                                        providerToDoubleList = Nothing,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Just $ readVar s,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation [Double]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $ fmap listSamplingStats s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation [Int]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap (map fromIntegral) s,
-                                        providerToInt    = Nothing,
                                         providerToIntStats =
-                                          Just $ liftSimulation $ fmap listSamplingStats s,
-                                        providerToIntList =
-                                          Just $ liftSimulation s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics [Double]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ fmap listSamplingStats s,
-                                        providerToDoubleList =
-                                          Just s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics [Int]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
                                           Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats s,
-                                        providerToDoubleList =
-                                          Just $ fmap (map fromIntegral) s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ fmap listSamplingStats s,
-                                        providerToIntList =
-                                          Just s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref [Double]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ fmap listSamplingStats $ readRef s,
-                                        providerToDoubleList =
-                                          Just $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
+                                          containerData s,
                                         providerToIntList = Nothing,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s } ] }
 
-instance Series (Ref [Int]) where
+instance SeriesContainer c => Series (c [Double]) where
   
   seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $ readRef s,
-                                        providerToDoubleList =
-                                          Just $ fmap (map fromIntegral) $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ fmap listSamplingStats $ readRef s,
-                                        providerToIntList =
-                                          Just $ readRef s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var [Double]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ fmap listSamplingStats $ readVar s,
-                                        providerToDoubleList =
-                                          Just $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var [Int]) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $ readVar s,
-                                        providerToDoubleList =
-                                          Just $ fmap (map fromIntegral) $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ fmap listSamplingStats $ readVar s,
-                                        providerToIntList =
-                                          Just $ readVar s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Ix i => Series (Simulation (Array i Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap elems s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap elems s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Ix i => Series (Simulation (Array i Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap elems s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap (map fromIntegral) $
-                                          fmap elems s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap elems s,
-                                        providerToIntList =
-                                          Just $ liftSimulation $
-                                          fmap elems s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Ix i => Series (Dynamics (Array i Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
+                      [SeriesProvider { providerName = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems s,
+                                          containerData s,
                                         providerToDoubleList =
-                                          Just $ fmap elems s,
-                                        providerToInt    = Nothing,
+                                          Just $
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s } ] }
 
-instance Ix i => Series (Dynamics (Array i Int)) where
-
-   seriesEntity name s =
+instance SeriesContainer c => Series (c [Int]) where
+  
+  seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
+                      [SeriesProvider { providerName = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
-                                          fmap elems s,
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
                                           fmap (map fromIntegral) $
-                                          fmap elems s,
-                                        providerToInt    = Nothing,
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems s,
+                                          containerData s,
                                         providerToIntList =
-                                          Just $ fmap elems s,
+                                          Just $
+                                          containerData s,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s } ] }
 
-instance Ix i => Series (Ref (Array i Double)) where
+instance (Ix i, SeriesContainer c) => Series (c (Array i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToInt = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal =
+                                          containerSignal s } ] }
+
+instance (Ix i, SeriesContainer c) => Series (c (Array i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToInt = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap A.elems $
+                                          containerData s,
+                                        providerToString = Nothing,
+                                        providerSignal =
+                                          containerSignal s } ] }
+
+instance SeriesContainer c => Series (c (V.Vector Double)) where
 
    seriesEntity name s =
     SeriesEntity { seriesProviders =
@@ -1102,16 +818,20 @@ instance Ix i => Series (Ref (Array i Double)) where
                                         providerToDoubleStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems $ readRef s,
+                                          fmap V.toList $
+                                          containerData s,
                                         providerToDoubleList =
-                                          Just $ fmap elems $ readRef s,
-                                        providerToInt    = Nothing,
+                                          Just $
+                                          fmap V.toList $
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s } ] }
 
-instance Ix i => Series (Ref (Array i Int)) where
+instance SeriesContainer c => Series (c (V.Vector Int)) where
 
    seriesEntity name s =
     SeriesEntity { seriesProviders =
@@ -1121,419 +841,76 @@ instance Ix i => Series (Ref (Array i Int)) where
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
-                                          fmap elems $ readRef s,
+                                          fmap V.toList $
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
                                           fmap (map fromIntegral) $
-                                          fmap elems $ readRef s,
-                                        providerToInt    = Nothing,
+                                          fmap V.toList $
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems $ readRef s,
+                                          fmap V.toList $
+                                          containerData s,
                                         providerToIntList =
                                           Just $
-                                          fmap elems $ readRef s,
+                                          fmap V.toList $
+                                          containerData s,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s }] }
 
-
-instance Ix i => Series (Var (Array i Double)) where
+instance SeriesContainer c => Series (c (UV.Vector Double)) where
 
    seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
+                      [SeriesProvider { providerName = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems $ readVar s,
+                                          fmap UV.toList $
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
-                                          fmap elems $ readVar s,
-                                        providerToInt    = Nothing,
+                                          fmap UV.toList $
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
+                                        providerSignal =
+                                          containerSignal s } ] }
 
-instance Ix i => Series (Var (Array i Int)) where
+instance SeriesContainer c => Series (c (UV.Vector Int)) where
 
    seriesEntity name s =
     SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
+                      [SeriesProvider { providerName = name,
                                         providerToDouble = Nothing,
                                         providerToDoubleStats =
                                           Just $
                                           fmap fromIntSamplingStats $
                                           fmap listSamplingStats $
-                                          fmap elems $ readVar s,
+                                          fmap UV.toList $
+                                          containerData s,
                                         providerToDoubleList =
                                           Just $
                                           fmap (map fromIntegral) $
-                                          fmap elems $ readVar s,
-                                        providerToInt    = Nothing,
+                                          fmap UV.toList $
+                                          containerData s,
+                                        providerToInt = Nothing,
                                         providerToIntStats =
                                           Just $
                                           fmap listSamplingStats $
-                                          fmap elems $ readVar s,
+                                          fmap UV.toList $
+                                          containerData s,
                                         providerToIntList =
                                           Just $
-                                          fmap elems $ readVar s,
+                                          fmap UV.toList $
+                                          containerData s,
                                         providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation (V.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap V.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation (V.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap (map fromIntegral) $
-                                          fmap V.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToIntList =
-                                          Just $ liftSimulation $
-                                          fmap V.toList s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (V.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToDoubleList =
-                                          Just $ fmap V.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (V.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap V.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList s,
-                                        providerToIntList =
-                                          Just $ fmap V.toList s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (V.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readRef s,
-                                        providerToDoubleList =
-                                          Just $ fmap V.toList $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (V.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readRef s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap V.toList $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readRef s,
-                                        providerToIntList =
-                                          Just $
-                                          fmap V.toList $ readRef s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (V.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readVar s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap V.toList $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (V.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readVar s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap V.toList $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap V.toList $ readVar s,
-                                        providerToIntList =
-                                          Just $
-                                          fmap V.toList $ readVar s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation (UV.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap UV.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Simulation (UV.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $ liftSimulation $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToDoubleList =
-                                          Just $ liftSimulation $
-                                          fmap (map fromIntegral) $
-                                          fmap UV.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $ liftSimulation $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToIntList =
-                                          Just $ liftSimulation $
-                                          fmap UV.toList s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (UV.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToDoubleList =
-                                          Just $ fmap UV.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Dynamics (UV.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap UV.toList s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList s,
-                                        providerToIntList =
-                                          Just $ fmap UV.toList s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (UV.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readRef s,
-                                        providerToDoubleList =
-                                          Just $ fmap UV.toList $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Ref (UV.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readRef s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap UV.toList $ readRef s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readRef s,
-                                        providerToIntList =
-                                          Just $
-                                          fmap UV.toList $ readRef s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (UV.Vector Double)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readVar s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap UV.toList $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
-instance Series (Var (UV.Vector Int)) where
-
-   seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Nothing,
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap fromIntSamplingStats $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readVar s,
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap (map fromIntegral) $
-                                          fmap UV.toList $ readVar s,
-                                        providerToInt    = Nothing,
-                                        providerToIntStats =
-                                          Just $
-                                          fmap listSamplingStats $
-                                          fmap UV.toList $ readVar s,
-                                        providerToIntList =
-                                          Just $
-                                          fmap UV.toList $ readVar s,
-                                        providerToString = Nothing,
-                                        providerSignal   = Nothing }] }
-
+                                        providerSignal =
+                                          containerSignal s } ] }
