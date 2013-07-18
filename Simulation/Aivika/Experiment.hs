@@ -3,16 +3,16 @@
 
 -- |
 -- Module     : Simulation.Aivika.Experiment
--- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
+-- Copyright  : Copyright (c) 2012-2013, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.4.1
+-- Tested with: GHC 7.6.3
 --
 -- The module defines the simulation experiments. They automate
 -- the process of generating and analyzing the results. Moreover,
 -- this module is open to extensions, allowing you to define
--- your own output views for the simulations results, for example,
+-- your own output views for the simulation results, for example,
 -- such views that would allow saving the results in PDF or as
 -- charts. To decrease the number of dependencies, such possible  
 -- extenstions are not included in this package, although simple
