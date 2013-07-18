@@ -33,8 +33,10 @@ module Simulation.Aivika.Experiment
         SeriesProvider(..),
         SeriesListWithSubscript,
         SeriesArrayWithSubscript,
+        SeriesVectorWithSubscript,
         seriesListWithSubscript,
         seriesArrayWithSubscript,
+        seriesVectorWithSubscript,
         View(..),
         Generator(..),
         Reporter(..),
@@ -48,6 +50,9 @@ import Control.Monad.State
 import Control.Concurrent.ParallelIO.Local
 
 import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as UV
+
 import Data.Array
 import Data.Maybe
 import Data.Monoid
@@ -661,7 +666,7 @@ instance Series s => Series [s] where
   
   seriesEntity name s = 
     SeriesEntity { seriesProviders = 
-                      join $ forM (zip [1..] s) $ \(i, s) ->
+                      join $ forM (zip [0..] s) $ \(i, s) ->
                       let name' = name ++ "[" ++ show i ++ "]"
                       in seriesProviders $ seriesEntity name' s }
     
@@ -670,6 +675,14 @@ instance (Show i, Ix i, Series s) => Series (Array i s) where
   seriesEntity name s =
     SeriesEntity { seriesProviders =
                       join $ forM (assocs s) $ \(i, s) ->
+                      let name' = name ++ "[" ++ show i ++ "]"
+                      in seriesProviders $ seriesEntity name' s }
+
+instance Series s => Series (V.Vector s) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      join $ forM (zip [0..] (V.toList s)) $ \(i, s) ->
                       let name' = name ++ "[" ++ show i ++ "]"
                       in seriesProviders $ seriesEntity name' s }
 
@@ -683,6 +696,11 @@ data SeriesArrayWithSubscript i s =
   SeriesArrayWithSubscript { seriesArray          :: Array i s,
                              seriesArraySubscript :: Array i String }
 
+-- | Represents a vector with the specified subscript.
+data SeriesVectorWithSubscript s =
+  SeriesVectorWithSubscript { seriesVector          :: V.Vector s,
+                              seriesVectorSubscript :: V.Vector String }
+
 -- | Add the specified subscript to the list.
 seriesListWithSubscript :: Series s => [s] -> [String] -> SeriesListWithSubscript s
 seriesListWithSubscript = SeriesListWithSubscript
@@ -691,6 +709,11 @@ seriesListWithSubscript = SeriesListWithSubscript
 seriesArrayWithSubscript :: (Ix i, Series s) => Array i s -> Array i String
                             -> SeriesArrayWithSubscript i s
 seriesArrayWithSubscript = SeriesArrayWithSubscript
+
+-- | Add the specified subscript to the vector.
+seriesVectorWithSubscript :: Series s => V.Vector s -> V.Vector String
+                             -> SeriesVectorWithSubscript s
+seriesVectorWithSubscript = SeriesVectorWithSubscript
 
 instance Series s => Series (SeriesListWithSubscript s) where
   
@@ -711,6 +734,16 @@ instance (Ix i, Series s) => Series (SeriesArrayWithSubscript i s) where
                       join $ forM (zip (assocs xs) (elems ns)) $ \((i, s), n) ->
                         let name' = name ++ n
                         in seriesProviders $ seriesEntity name' s }
+
+instance Series s => Series (SeriesVectorWithSubscript s) where
+  
+  seriesEntity name s =
+    SeriesEntity { seriesProviders = do
+                      let xs = seriesVector s
+                          ns = seriesVectorSubscript s
+                      join $ forM (zip (V.toList xs) (V.toList ns)) $ \(x, n) ->
+                        let name' = name ++ n
+                        in seriesProviders $ seriesEntity name' x }
 
 instance Series (Simulation (SamplingStats Double)) where
   
@@ -1060,7 +1093,6 @@ instance Ix i => Series (Dynamics (Array i Int)) where
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
 
-
 instance Ix i => Series (Ref (Array i Double)) where
 
    seriesEntity name s =
@@ -1150,3 +1182,358 @@ instance Ix i => Series (Var (Array i Int)) where
                                           fmap elems $ readVar s,
                                         providerToString = Nothing,
                                         providerSignal   = Nothing }] }
+
+instance Series (Simulation (V.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap V.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation (V.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap (map fromIntegral) $
+                                          fmap V.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToIntList =
+                                          Just $ liftSimulation $
+                                          fmap V.toList s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (V.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToDoubleList =
+                                          Just $ fmap V.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (V.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap V.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList s,
+                                        providerToIntList =
+                                          Just $ fmap V.toList s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (V.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ fmap V.toList $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (V.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readRef s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap V.toList $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readRef s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap V.toList $ readRef s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (V.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap V.toList $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (V.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap V.toList $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap V.toList $ readVar s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap V.toList $ readVar s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation (UV.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap UV.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Simulation (UV.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $ liftSimulation $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToDoubleList =
+                                          Just $ liftSimulation $
+                                          fmap (map fromIntegral) $
+                                          fmap UV.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $ liftSimulation $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToIntList =
+                                          Just $ liftSimulation $
+                                          fmap UV.toList s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (UV.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToDoubleList =
+                                          Just $ fmap UV.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Dynamics (UV.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap UV.toList s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList s,
+                                        providerToIntList =
+                                          Just $ fmap UV.toList s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (UV.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readRef s,
+                                        providerToDoubleList =
+                                          Just $ fmap UV.toList $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Ref (UV.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readRef s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap UV.toList $ readRef s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readRef s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap UV.toList $ readRef s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (UV.Vector Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap UV.toList $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
+instance Series (Var (UV.Vector Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName     = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readVar s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap UV.toList $ readVar s,
+                                        providerToInt    = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UV.toList $ readVar s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap UV.toList $ readVar s,
+                                        providerToString = Nothing,
+                                        providerSignal   = Nothing }] }
+
