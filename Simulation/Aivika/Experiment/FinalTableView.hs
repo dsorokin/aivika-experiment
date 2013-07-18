@@ -64,7 +64,7 @@ data FinalTableView =
                    -- An example is
                    --
                    -- @
-                   --   finalTableFileName = UniqueFileName \"$TITLE\", \".csv\"
+                   --   finalTableFileName = UniqueFileName \"$TITLE\" \".csv\"
                    -- @
                    finalTableSeparator   :: String,
                    -- ^ It defines the separator for the view. 

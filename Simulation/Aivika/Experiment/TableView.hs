@@ -82,7 +82,7 @@ data TableView =
               -- An example is
               --
               -- @
-              --   tableFileName = UniqueFileName \"$TITLE - $RUN_INDEX\", \".csv\"
+              --   tableFileName = UniqueFileName \"$TITLE - $RUN_INDEX\" \".csv\"
               -- @
               tableSeparator   :: String,
               -- ^ It defines the separator for the view. 
