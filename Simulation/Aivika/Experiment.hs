@@ -725,7 +725,10 @@ instance SeriesContainer c => Series (c [Double]) where
                                         providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s } ] }
 
@@ -752,7 +755,10 @@ instance SeriesContainer c => Series (c [Int]) where
                                         providerToIntList =
                                           Just $
                                           containerData s,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s } ] }
 
@@ -880,7 +886,10 @@ instance SeriesContainer c => Series (c (V.Vector Double)) where
                                         providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s } ] }
 
@@ -911,7 +920,10 @@ instance SeriesContainer c => Series (c (V.Vector Int)) where
                                           Just $
                                           fmap V.toList $
                                           containerData s,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s }] }
 
@@ -933,7 +945,10 @@ instance SeriesContainer c => Series (c (UV.Vector Double)) where
                                         providerToInt = Nothing,
                                         providerToIntStats = Nothing,
                                         providerToIntList = Nothing,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s } ] }
 
@@ -964,6 +979,9 @@ instance SeriesContainer c => Series (c (UV.Vector Int)) where
                                           Just $
                                           fmap UV.toList $
                                           containerData s,
-                                        providerToString = Nothing,
+                                        providerToString =
+                                          Just $
+                                          fmap show $
+                                          containerData s,
                                         providerSignal =
                                           containerSignal s } ] }
