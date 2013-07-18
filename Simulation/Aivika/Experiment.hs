@@ -809,6 +809,59 @@ instance (Ix i, SeriesContainer c) => Series (c (Array i Int)) where
                                         providerSignal =
                                           containerSignal s } ] }
 
+instance (Ix i, SeriesContainer c) => Series (c (UArray i Double)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToInt = Nothing,
+                                        providerToIntStats = Nothing,
+                                        providerToIntList = Nothing,
+                                        providerToString = Nothing,
+                                        providerSignal =
+                                          containerSignal s } ] }
+
+instance (Ix i, SeriesContainer c) => Series (c (UArray i Int)) where
+
+   seriesEntity name s =
+    SeriesEntity { seriesProviders =
+                      [SeriesProvider { providerName = name,
+                                        providerToDouble = Nothing,
+                                        providerToDoubleStats =
+                                          Just $
+                                          fmap fromIntSamplingStats $
+                                          fmap listSamplingStats $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToDoubleList =
+                                          Just $
+                                          fmap (map fromIntegral) $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToInt = Nothing,
+                                        providerToIntStats =
+                                          Just $
+                                          fmap listSamplingStats $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToIntList =
+                                          Just $
+                                          fmap UA.elems $
+                                          containerData s,
+                                        providerToString = Nothing,
+                                        providerSignal =
+                                          containerSignal s } ] }
+
 instance SeriesContainer c => Series (c (V.Vector Double)) where
 
    seriesEntity name s =
