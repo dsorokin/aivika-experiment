@@ -48,7 +48,6 @@ module Simulation.Aivika.Experiment
 
 import Control.Monad
 import Control.Monad.State
-import Control.Monad.Identity
 import Control.Concurrent.ParallelIO.Local
 
 import qualified Data.Map as M
@@ -440,12 +439,6 @@ class SeriesContainer c where
 
   -- | Get the signal for the container.
   containerSignal :: c a => Maybe (Signal ())
-
-instance SeriesContainer Identity where
-
-  containerData = return . runIdentity
-
-  containerSignal = const Nothing
 
 instance SeriesContainer Simulation where
 
