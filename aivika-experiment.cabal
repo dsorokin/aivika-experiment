@@ -21,6 +21,7 @@ build-type:      Simple
 tested-with:     GHC == 7.6.3
 
 extra-source-files:  examples/MachRep3.hs
+                     examples/LinearArray.hs
                      examples/README
 
 library
