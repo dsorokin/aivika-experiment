@@ -122,11 +122,7 @@ simulateTimingStats st expdata =
                liftIO $ modifyIORef r ((:) (name, stats))
                let h = filterSignalM (const predicate) $
                        experimentMixedSignal expdata [provider]
-               enqueue (experimentQueue expdata) t $
-                 -- we must subscribe through the event queue;
-                 -- otherwise, we will loose a signal in the start time,
-                 -- because the handleSignal_ function checks the event queue
-                 handleSignal_ h $ \_ ->
+               handleSignal_ h $ \_ ->
                  do t <- time
                     x <- input
                     liftIO $

@@ -105,12 +105,7 @@ simulateLastValues st expdata =
                         " as a string: simulateLastValues"
              Just input -> (providerName provider, input)
      i <- liftSimulation simulationIndex
-     t <- time
-     enqueue (experimentQueue expdata) t $
-       -- we must subscribe through the event queue;
-       -- otherwise, we will loose a signal in the start time,
-       -- because the handleSignal_ function checks the event queue
-       handleSignal_ (experimentSignalInStopTime expdata) $ \t ->
+     handleSignal_ (experimentSignalInStopTime expdata) $ \t ->
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM input $ \(name, input) ->
             do x <- input

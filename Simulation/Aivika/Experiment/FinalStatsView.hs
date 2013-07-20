@@ -131,20 +131,15 @@ simulateFinalStats st expdata =
          error "Series with different names are returned for different runs: simulateFinalStats"
      results <- liftIO $ fmap fromJust $ readIORef (finalStatsResults st)
      let values = finalStatsValues results
-     t0 <- starttime
-     enqueue (experimentQueue expdata) t0 $
-       do let h = filterSignalM (const predicate) $
-                  experimentSignalInStopTime expdata
-          -- we must subscribe through the event queue;
-          -- otherwise, we will loose a signal in the start time,
-          -- because the handleSignal_ function checks the event queue
-          handleSignal_ h $ \_ ->
-            do xs <- sequence input
-               liftIO $ withMVar lock $ \() ->
-                 forM_ (zip xs values) $ \(x, values) ->
-                 do y <- readIORef values
-                    let y' = addDataToSamplingStats x y
-                    y' `seq` writeIORef values y'
+         h = filterSignalM (const predicate) $
+             experimentSignalInStopTime expdata
+     handleSignal_ h $ \_ ->
+       do xs <- sequence input
+          liftIO $ withMVar lock $ \() ->
+            forM_ (zip xs values) $ \(x, values) ->
+            do y <- readIORef values
+               let y' = addDataToSamplingStats x y
+               y' `seq` writeIORef values y'
      return $ return ()
 
 -- | Get the HTML code.     

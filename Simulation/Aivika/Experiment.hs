@@ -330,10 +330,7 @@ runExperimentWithExecutor executor e simulation =
                     forM reporters $ \reporter ->
                     reporterSimulate reporter d
               runDynamicsInStopTime $
-                do updateSignal $ 
-                     experimentMixedSignal d $
-                     join $ map seriesProviders $
-                     M.elems $ experimentSeries d
+                do runQueueSync $ experimentQueue d
                    sequence_ fs
      executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise

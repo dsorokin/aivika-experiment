@@ -168,18 +168,13 @@ simulateFinalTable st expdata =
          error "Series with different names are returned for different runs: simulateFinalTable"
      results <- liftIO $ fmap fromJust $ readIORef (finalTableResults st)
      let values = finalTableValues results
-     t <- time
-     enqueue (experimentQueue expdata) t $
-       do let h = filterSignalM (const predicate) $
-                  experimentSignalInStopTime expdata
-          -- we must subscribe through the event queue;
-          -- otherwise, we will loose a signal in the start time,
-          -- because the handleSignal_ function checks the event queue
-          handleSignal_ h $ \_ ->
-            do xs <- sequence input
-               i  <- liftSimulation simulationIndex
-               liftIO $ withMVar lock $ \() ->
-                 modifyIORef values $ M.insert i xs
+         h = filterSignalM (const predicate) $
+             experimentSignalInStopTime expdata
+     handleSignal_ h $ \_ ->
+       do xs <- sequence input
+          i  <- liftSimulation simulationIndex
+          liftIO $ withMVar lock $ \() ->
+            modifyIORef values $ M.insert i xs
      return $ return ()
      
 -- | Save the results in the CSV file after the simulation is complete.

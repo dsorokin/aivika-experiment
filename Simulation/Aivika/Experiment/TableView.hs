@@ -174,12 +174,7 @@ simulateTable st expdata =
                  hPutStr h separator
                hPutStr h $ show $ providerName provider
           hPutStrLn h ""
-     t <- time
-     enqueue (experimentQueue expdata) t $
-       -- we must subscribe through the event queue;
-       -- otherwise, we will loose a signal in the start time,
-       -- because the handleSignal_ function checks the event queue
-       handleSignal_ (experimentMixedSignal expdata providers) $ \t ->
+     handleSignal_ (experimentMixedSignal expdata providers) $ \t ->
        do p <- predicate
           when p $
             do forM_ (zip [0..] input) $ \(column, input) ->  -- write the row

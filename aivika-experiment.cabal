@@ -52,7 +52,7 @@ library
                      split >= 0.2.2,
                      network >= 2.3.0.13,
                      parallel-io >= 0.3.2.1,
-                     aivika >= 0.6
+                     aivika >= 0.6.1
 
     extensions:      FlexibleInstances
                      
