@@ -34,7 +34,7 @@ specs = Specs { spcStartTime = 0,
                 spcDT = 0.1,
                 spcMethod = RungeKutta4 }
 
--- | This is an analog of 'Data.Vector.generateM' included in the Haskell platform.
+-- | This is an analog of 'V.generateM' included in the Haskell platform.
 generateArray :: (Ix i, Monad m) => (i, i) -> (i -> m a) -> m (Array i a)
 generateArray bnds generator =
   do ps <- forM (range bnds) $ \i ->
