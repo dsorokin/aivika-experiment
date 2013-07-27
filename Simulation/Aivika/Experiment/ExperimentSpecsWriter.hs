@@ -19,7 +19,7 @@ module Simulation.Aivika.Experiment.ExperimentSpecsWriter
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
 
-import Simulation.Aivika.Dynamics.Simulation
+import Simulation.Aivika.Specs
 
 -- | Defines a writer that knows how to represent the
 -- experiment specs as the HTML table.

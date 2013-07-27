@@ -18,13 +18,13 @@ module Simulation.Aivika.Experiment.SamplingStatsSource
         samplingStatsSourceData,
         addDataToSamplingStats) where
 
-import Simulation.Aivika.Dynamics
+import Simulation.Aivika.Event
 import Simulation.Aivika.Statistics
 import Simulation.Aivika.Experiment
 
 -- | Represents the optimized source of data for the statistics.
-data SamplingStatsSource a = SingleValueSource (Dynamics a)
-                           | MultipleValueSource (Dynamics (SamplingStats a))
+data SamplingStatsSource a = SingleValueSource (Event a)
+                           | MultipleValueSource (Event (SamplingStats a))
 
 -- | Represents the optimized data to be included in the statistics.
 data SamplingStatsData a = SingleValueData !a
@@ -51,7 +51,7 @@ providerToIntStatsSource provider =
         Nothing -> Nothing
 
 -- | Get data from the source in the current time point.
-samplingStatsSourceData :: SamplingStatsSource a -> Dynamics (SamplingStatsData a)
+samplingStatsSourceData :: SamplingStatsSource a -> Event (SamplingStatsData a)
 samplingStatsSourceData source =
   case source of
     SingleValueSource x -> x >>= return . SingleValueData

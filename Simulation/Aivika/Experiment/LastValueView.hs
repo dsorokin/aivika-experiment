@@ -26,11 +26,10 @@ import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
-import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Dynamics.Simulation
-import Simulation.Aivika.Dynamics.Signal
-import Simulation.Aivika.Dynamics.EventQueue
-import Simulation.Aivika.Dynamics.Base
+import Simulation.Aivika.Specs
+import Simulation.Aivika.Simulation
+import Simulation.Aivika.Event
+import Simulation.Aivika.Signal
 
 -- | Defines the 'View' that shows the last values of the simulation
 -- variables.
@@ -93,7 +92,7 @@ newLastValues view exp =
                                  lastValueMap        = m }
        
 -- | Get the last values during the simulation.
-simulateLastValues :: LastValueViewState -> ExperimentData -> Dynamics (Dynamics ())
+simulateLastValues :: LastValueViewState -> ExperimentData -> Event (Event ())
 simulateLastValues st expdata =
   do let labels = lastValueSeries $ lastValueView st
          input  =

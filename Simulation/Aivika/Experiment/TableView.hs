@@ -29,11 +29,10 @@ import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
-import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Dynamics.Simulation
-import Simulation.Aivika.Dynamics.Signal
-import Simulation.Aivika.Dynamics.EventQueue
-import Simulation.Aivika.Dynamics.Base
+import Simulation.Aivika.Specs
+import Simulation.Aivika.Simulation
+import Simulation.Aivika.Event
+import Simulation.Aivika.Signal
 
 -- | Defines the 'View' that saves the simulation results
 -- in the CSV file(s).
@@ -91,7 +90,7 @@ data TableView =
               -- ^ It defines the formatter which is applied
               -- to all values before they will be written
               -- in the CSV file(s).
-              tablePredicate   :: Dynamics Bool,
+              tablePredicate   :: Event Bool,
               -- ^ It specifies the predicate that defines
               -- when we can save data in the table.
               tableSeries      :: [String] 
@@ -148,7 +147,7 @@ newTable view exp dir =
                              tableMap          = m }
        
 -- | Write the tables during the simulation.
-simulateTable :: TableViewState -> ExperimentData -> Dynamics (Dynamics ())
+simulateTable :: TableViewState -> ExperimentData -> Event (Event ())
 simulateTable st expdata =
   do let labels = tableSeries $ tableView st
          providers = experimentSeriesProviders expdata labels

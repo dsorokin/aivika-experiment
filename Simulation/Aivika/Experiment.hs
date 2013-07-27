@@ -70,14 +70,14 @@ import System.FilePath (combine)
 
 import GHC.Conc (getNumCapabilities)
 
+import Simulation.Aivika.Specs
+import Simulation.Aivika.Simulation
 import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Dynamics.Simulation
-import Simulation.Aivika.Dynamics.Signal
-import Simulation.Aivika.Dynamics.Ref
-import Simulation.Aivika.Dynamics.Var
-import Simulation.Aivika.Dynamics.UVar
-import Simulation.Aivika.Dynamics.EventQueue
-import Simulation.Aivika.Dynamics.Parameter
+import Simulation.Aivika.Event
+import Simulation.Aivika.Signal
+import Simulation.Aivika.Ref
+import Simulation.Aivika.Var
+import Simulation.Aivika.Parameter
 import Simulation.Aivika.Statistics
 
 import Simulation.Aivika.Experiment.HtmlWriter
@@ -146,7 +146,7 @@ class View v where
 -- is numeric but it may be any string.
 --  
 -- At the same time, if the array or list of numeric values
--- is wrapped in monad 'Simulation' or 'Dynamics' then the
+-- is wrapped in monads 'Simulation', 'Dynamics' or 'Event' then the
 -- underlying numeric array and list are already treated as
 -- a sampling statistics or list of numbers in time point.
 --
@@ -170,19 +170,19 @@ data SeriesEntity =
 data SeriesProvider =
   SeriesProvider { providerName :: String,
                    -- ^ Return the name.
-                   providerToDouble :: Maybe (Dynamics Double),
+                   providerToDouble :: Maybe (Event Double),
                    -- ^ Try to return the data as double values.
-                   providerToDoubleStats :: Maybe (Dynamics (SamplingStats Double)),
+                   providerToDoubleStats :: Maybe (Event (SamplingStats Double)),
                    -- ^ Try to return the statistics data in time points.
-                   providerToDoubleList :: Maybe (Dynamics [Double]),
+                   providerToDoubleList :: Maybe (Event [Double]),
                    -- ^ Try to return the list of double values.
-                   providerToInt :: Maybe (Dynamics Int),
+                   providerToInt :: Maybe (Event Int),
                    -- ^ Try to return the data as integers.
-                   providerToIntStats :: Maybe (Dynamics (SamplingStats Int)),
+                   providerToIntStats :: Maybe (Event (SamplingStats Int)),
                    -- ^ Try to return the statistics data in time points.
-                   providerToIntList :: Maybe (Dynamics [Int]),
+                   providerToIntList :: Maybe (Event [Int]),
                    -- ^ Try to return the list of integer values.
-                   providerToString :: Maybe (Dynamics String),
+                   providerToString :: Maybe (Event String),
                    -- ^ Try to return the data as strings.
                    providerSignal :: Maybe (Signal ())
                    -- ^ Try to get a signal for the data, which
@@ -195,9 +195,7 @@ data SeriesProvider =
 
 -- | It describes the source simulation data used in the experiment.
 data ExperimentData =
-  ExperimentData { experimentQueue :: EventQueue,
-                   -- ^ Return the event queue.
-                   experimentSignalInIntegTimes :: Signal Double,
+  ExperimentData { experimentSignalInIntegTimes :: Signal Double,
                    -- ^ The signal triggered in the integration time points.
                    experimentSignalInStartTime :: Signal Double,
                    -- ^ The signal triggered in the start time.
@@ -209,14 +207,13 @@ data ExperimentData =
 
 -- | Prepare data for the simulation experiment in start time from the series 
 -- with the specified labels.
-experimentDataInStartTime :: EventQueue -> [(String, SeriesEntity)] -> Simulation ExperimentData
-experimentDataInStartTime q m = runDynamicsInStartTime d where
-  d = do signalInIntegTimes <- newSignalInIntegTimes q
-         signalInStartTime  <- newSignalInStartTime q
-         signalInStopTime   <- newSignalInStopTime q
+experimentDataInStartTime :: [(String, SeriesEntity)] -> Simulation ExperimentData
+experimentDataInStartTime m = runEventInStartTime IncludingEarlierEvents d where
+  d = do signalInIntegTimes <- newSignalInIntegTimes
+         signalInStartTime  <- newSignalInStartTime
+         signalInStopTime   <- newSignalInStopTime
          let series = M.fromList m
-         return ExperimentData { experimentQueue              = q,
-                                 experimentSignalInIntegTimes = signalInIntegTimes,
+         return ExperimentData { experimentSignalInIntegTimes = signalInIntegTimes,
                                  experimentSignalInStartTime  = signalInStartTime,
                                  experimentSignalInStopTime   = signalInStopTime,
                                  experimentSeries             = series }
@@ -260,8 +257,7 @@ data Reporter =
              reporterFinalise   :: IO (),
              -- ^ Finalise the reporting after
              -- all simulation runs are finished.
-             reporterSimulate   :: ExperimentData -> 
-                                   Dynamics (Dynamics ()),
+             reporterSimulate   :: ExperimentData -> Event (Event ()),
              -- ^ Start the simulation run in the start time
              -- and return a finalizer that will be called 
              -- in the stop time after the last signal is 
@@ -326,12 +322,11 @@ runExperimentWithExecutor executor e simulation =
      let simulate :: Simulation ()
          simulate =
            do d  <- simulation
-              fs <- runDynamicsInStartTime $
+              fs <- runEventInStartTime IncludingEarlierEvents $
                     forM reporters $ \reporter ->
                     reporterSimulate reporter d
-              runDynamicsInStopTime $
-                do runQueueSync $ experimentQueue d
-                   sequence_ fs
+              runEventInStopTime IncludingCurrentEvents $
+                sequence_ fs
      executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
      experimentIndexHtml e e reporters path
@@ -432,7 +427,7 @@ combineName dir name =
 class SeriesContainer c where
 
   -- | Extract data from the container.
-  containerData :: c a -> Dynamics a
+  containerData :: c a -> Event a
 
   -- | Get the signal for the container.
   containerSignal :: c a => Maybe (Signal ())
@@ -444,6 +439,12 @@ instance SeriesContainer Simulation where
   containerSignal = const Nothing
 
 instance SeriesContainer Dynamics where
+
+  containerData = liftDynamics
+
+  containerSignal = const Nothing
+
+instance SeriesContainer Event where
 
   containerData = id
 
@@ -541,44 +542,6 @@ instance SeriesContainer c => Series (c String) where
                                         providerSignal =
                                           containerSignal s }] }
 
-instance Series (UVar Double) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ readUVar s,
-                                        providerToDoubleStats =
-                                          Just $ fmap returnSamplingStats (readUVar s),
-                                        providerToDoubleList =
-                                          Just $ fmap return (readUVar s),
-                                        providerToInt    = Nothing,
-                                        providerToIntStats = Nothing,
-                                        providerToIntList = Nothing,
-                                        providerToString = Just $ fmap show (readUVar s),
-                                        providerSignal   = Just $ uvarChanged_ s }] }
-
-instance Series (UVar Int) where
-  
-  seriesEntity name s =
-    SeriesEntity { seriesProviders =
-                      [SeriesProvider { providerName     = name,
-                                        providerToDouble = Just $ fmap fromIntegral (readUVar s),
-                                        providerToDoubleStats =
-                                          Just $
-                                          fmap returnSamplingStats $
-                                          fmap fromIntegral (readUVar s),
-                                        providerToDoubleList =
-                                          Just $
-                                          fmap return $
-                                          fmap fromIntegral (readUVar s),
-                                        providerToInt    = Just $ readUVar s,
-                                        providerToIntStats =
-                                          Just $ fmap returnSamplingStats (readUVar s),
-                                        providerToIntList =
-                                          Just $ fmap return (readUVar s),
-                                        providerToString = Just $ fmap show (readUVar s),
-                                        providerSignal   = Just $ uvarChanged_ s }] }
-    
 instance Series s => Series [s] where
   
   seriesEntity name s = 
@@ -619,17 +582,33 @@ data SeriesVectorWithSubscript s =
                               seriesVectorSubscript :: V.Vector String }
 
 -- | Add the specified subscript to the list.
-seriesListWithSubscript :: Series s => [s] -> [String] -> SeriesListWithSubscript s
+seriesListWithSubscript :: Series s
+                           => [s]
+                           -- ^ the list to subscript
+                           -> [String]
+                           -- ^ the list of subscripts
+                           -> SeriesListWithSubscript s
+                           -- ^ the subscripted list
 seriesListWithSubscript = SeriesListWithSubscript
 
 -- | Add the specified subscript to the array.
-seriesArrayWithSubscript :: (Ix i, Series s) => Array i s -> Array i String
+seriesArrayWithSubscript :: (Ix i, Series s)
+                            => Array i s
+                            -- ^ the array to subscript
+                            -> Array i String
+                            -- ^ the array of subscripts
                             -> SeriesArrayWithSubscript i s
+                            -- ^ the subscripted array
 seriesArrayWithSubscript = SeriesArrayWithSubscript
 
 -- | Add the specified subscript to the vector.
-seriesVectorWithSubscript :: Series s => V.Vector s -> V.Vector String
+seriesVectorWithSubscript :: Series s
+                             => V.Vector s
+                             -- ^ the vector to subscript
+                             -> V.Vector String
+                             -- ^ the vector of subscripts
                              -> SeriesVectorWithSubscript s
+                             -- ^ the subscripted vector
 seriesVectorWithSubscript = SeriesVectorWithSubscript
 
 instance Series s => Series (SeriesListWithSubscript s) where

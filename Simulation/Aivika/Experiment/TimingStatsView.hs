@@ -27,11 +27,11 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.TimingStatsWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
+import Simulation.Aivika.Specs
+import Simulation.Aivika.Simulation
 import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Dynamics.Simulation
-import Simulation.Aivika.Dynamics.Signal
-import Simulation.Aivika.Dynamics.EventQueue
-import Simulation.Aivika.Dynamics.Base
+import Simulation.Aivika.Event
+import Simulation.Aivika.Signal
 import Simulation.Aivika.Statistics
 
 -- | Defines the 'View' that shows the timing statistics
@@ -53,7 +53,7 @@ data TimingStatsView =
                     -- ^ The description for the view.
                     timingStatsWriter      :: TimingStatsWriter Double,
                     -- ^ It shows the timing statistics.
-                    timingStatsPredicate   :: Dynamics Bool,
+                    timingStatsPredicate   :: Event Bool,
                     -- ^ Specifies when gathering the statistics.
                     timingStatsSeries      :: [String] 
                     -- ^ It contains the labels of the observed series.
@@ -98,7 +98,7 @@ newTimingStats view exp =
                                    timingStatsMap        = m }
        
 -- | Get the timing statistics during the simulation.
-simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Dynamics (Dynamics ())
+simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Event (Event ())
 simulateTimingStats st expdata =
   do let labels = timingStatsSeries $ timingStatsView st
          input providers =
@@ -112,7 +112,6 @@ simulateTimingStats st expdata =
          predicate = timingStatsPredicate $ timingStatsView st
      i <- liftSimulation simulationIndex
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
-     t <- time
      forM_ labels $ \label ->
        do let providers = experimentSeriesProviders expdata [label]
               pairs     = input providers
@@ -123,7 +122,7 @@ simulateTimingStats st expdata =
                let h = filterSignalM (const predicate) $
                        experimentMixedSignal expdata [provider]
                handleSignal_ h $ \_ ->
-                 do t <- time
+                 do t <- liftDynamics time
                     x <- input
                     liftIO $
                       do y <- readIORef stats

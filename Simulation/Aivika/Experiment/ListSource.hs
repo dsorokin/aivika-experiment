@@ -25,13 +25,13 @@ module Simulation.Aivika.Experiment.ListSource
 import Data.IORef
 import Control.Monad
 
-import Simulation.Aivika.Dynamics
+import Simulation.Aivika.Event
 import Simulation.Aivika.Statistics
 import Simulation.Aivika.Experiment
 
 -- | Represents the optimized source of data for constructing the list.
-data ListSource a = SingleValueSource (Dynamics a)
-                  | MultipleValueSource (Dynamics [a])
+data ListSource a = SingleValueSource (Event a)
+                  | MultipleValueSource (Event [a])
 
 -- | Represents the optimized data by which the list will be created.
 data ListData a = SingleValueData !a
@@ -58,7 +58,7 @@ providerToIntListSource provider =
         Nothing -> Nothing
 
 -- | Get data from the source in the current time point.
-listSourceData :: ListSource a -> Dynamics (ListData a)
+listSourceData :: ListSource a -> Event (ListData a)
 listSourceData (SingleValueSource x)    = x >>= return . SingleValueData
 listSourceData (MultipleValueSource xs) =
   do ys <- xs

@@ -27,11 +27,10 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.SamplingStatsWriter
 import Simulation.Aivika.Experiment.SamplingStatsSource
 
-import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Dynamics.Simulation
-import Simulation.Aivika.Dynamics.Signal
-import Simulation.Aivika.Dynamics.EventQueue
-import Simulation.Aivika.Dynamics.Base
+import Simulation.Aivika.Specs
+import Simulation.Aivika.Simulation
+import Simulation.Aivika.Event
+import Simulation.Aivika.Signal
 import Simulation.Aivika.Statistics
 
 -- | Defines the 'View' that gathers the statistics
@@ -43,7 +42,7 @@ data FinalStatsView =
                    -- ^ This is a description used in HTML.
                    finalStatsWriter      :: SamplingStatsWriter Double,
                    -- ^ It shows the sampling statistics.
-                   finalStatsPredicate   :: Dynamics Bool,
+                   finalStatsPredicate   :: Event Bool,
                    -- ^ It specifies the predicate that defines
                    -- when we count data when gathering the statistics.
                    finalStatsSeries      :: [String]
@@ -102,7 +101,7 @@ newFinalStatsResults names exp =
                                 finalStatsValues = values }
        
 -- | Simulation the specified series.
-simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Dynamics (Dynamics ())
+simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Event (Event ())
 simulateFinalStats st expdata =
   do let protolabels = finalStatsSeries $ finalStatsView st
          protoproviders = flip map protolabels $ \protolabel ->
