@@ -79,6 +79,7 @@ import Simulation.Aivika.Ref
 import Simulation.Aivika.Var
 import Simulation.Aivika.Parameter
 import Simulation.Aivika.Statistics
+import Simulation.Aivika.Observable
 
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
@@ -461,6 +462,12 @@ instance SeriesContainer Var where
   containerData = readVar
 
   containerSignal = Just . varChanged_
+
+instance SeriesContainer Observable where
+
+  containerData = readObservable
+
+  containerSignal = Just . observableChanged_
 
 instance SeriesContainer c => Series (c Double) where
   
