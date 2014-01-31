@@ -27,6 +27,7 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 import Simulation.Aivika.Specs
+import Simulation.Aivika.Parameter
 import Simulation.Aivika.Simulation
 import Simulation.Aivika.Event
 import Simulation.Aivika.Signal
@@ -103,7 +104,7 @@ simulateLastValues st expdata =
                         providerName provider ++ 
                         " as a string: simulateLastValues"
              Just input -> (providerName provider, input)
-     i <- liftSimulation simulationIndex
+     i <- liftParameter simulationIndex
      handleSignal_ (experimentSignalInStopTime expdata) $ \t ->
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM input $ \(name, input) ->

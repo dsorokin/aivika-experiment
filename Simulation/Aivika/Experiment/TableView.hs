@@ -30,6 +30,7 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 import Simulation.Aivika.Specs
+import Simulation.Aivika.Parameter
 import Simulation.Aivika.Simulation
 import Simulation.Aivika.Event
 import Simulation.Aivika.Signal
@@ -162,7 +163,7 @@ simulateTable st expdata =
          separator = tableSeparator $ tableView st
          formatter = tableFormatter $ tableView st
          predicate = tablePredicate $ tableView st
-     i <- liftSimulation simulationIndex
+     i <- liftParameter simulationIndex
      -- create a new file
      let f = fromJust $ M.lookup (i - 1) (tableMap st)
      h <- liftIO $ openFile f WriteMode

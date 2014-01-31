@@ -70,6 +70,7 @@ import System.FilePath (combine)
 
 import GHC.Conc (getNumCapabilities)
 
+import qualified Simulation.Aivika.Generator as G
 import Simulation.Aivika.Specs
 import Simulation.Aivika.Simulation
 import Simulation.Aivika.Dynamics
@@ -79,7 +80,6 @@ import Simulation.Aivika.Ref
 import Simulation.Aivika.Var
 import Simulation.Aivika.Parameter
 import Simulation.Aivika.Statistics
-import Simulation.Aivika.Observable
 
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
@@ -111,7 +111,7 @@ data Experiment =
 -- | The default experiment.
 defaultExperiment :: Experiment
 defaultExperiment =
-  Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4,
+  Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 G.SimpleGenerator,
                experimentRunCount      = 1,
                experimentDirectoryName = UniqueDirectoryName "experiment",
                experimentTitle         = "Simulation Experiment",
@@ -463,11 +463,11 @@ instance SeriesContainer Var where
 
   containerSignal = Just . varChanged_
 
-instance SeriesContainer Observable where
+instance SeriesContainer Signalable where
 
-  containerData = readObservable
+  containerData = readSignalable
 
-  containerSignal = Just . observableChanged_
+  containerSignal = Just . signalableChanged_
 
 instance SeriesContainer c => Series (c Double) where
   

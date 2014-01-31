@@ -31,6 +31,7 @@ import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.HtmlWriter
 
 import Simulation.Aivika.Specs
+import Simulation.Aivika.Parameter
 import Simulation.Aivika.Simulation
 import Simulation.Aivika.Event
 import Simulation.Aivika.Signal
@@ -171,7 +172,7 @@ simulateFinalTable st expdata =
              experimentSignalInStopTime expdata
      handleSignal_ h $ \_ ->
        do xs <- sequence input
-          i  <- liftSimulation simulationIndex
+          i  <- liftParameter simulationIndex
           liftIO $ withMVar lock $ \() ->
             modifyIORef values $ M.insert i xs
      return $ return ()

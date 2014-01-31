@@ -28,6 +28,7 @@ import Simulation.Aivika.Experiment.TimingStatsWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 import Simulation.Aivika.Specs
+import Simulation.Aivika.Parameter
 import Simulation.Aivika.Simulation
 import Simulation.Aivika.Dynamics
 import Simulation.Aivika.Event
@@ -110,7 +111,7 @@ simulateTimingStats st expdata =
                         " as double values: simulateTimingStats"
              Just input -> (provider, input)
          predicate = timingStatsPredicate $ timingStatsView st
-     i <- liftSimulation simulationIndex
+     i <- liftParameter simulationIndex
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
      forM_ labels $ \label ->
        do let providers = experimentSeriesProviders expdata [label]
