@@ -4,7 +4,7 @@
 -- |
 -- Module     : Simulation.Aivika.Experiment
 -- Copyright  : Copyright (c) 2012-2013, David Sorokin <david.sorokin@gmail.com>
--- License    : GPL
+-- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
 -- Tested with: GHC 7.6.3

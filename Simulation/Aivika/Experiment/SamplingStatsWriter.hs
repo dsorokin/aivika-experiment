@@ -2,7 +2,7 @@
 -- |
 -- Module     : Simulation.Aivika.Experiment.SamplingStatsWriter
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
--- License    : GPL
+-- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
 -- Tested with: GHC 7.4.1
