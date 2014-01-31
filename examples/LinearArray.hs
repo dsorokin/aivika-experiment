@@ -14,9 +14,7 @@ import Control.Monad.Trans
 
 import qualified Data.Vector as V
 
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Dynamics
+import Simulation.Aivika
 import Simulation.Aivika.SystemDynamics
 
 import Simulation.Aivika.Experiment
@@ -30,7 +28,8 @@ import Simulation.Aivika.Experiment.FinalTableView
 specs = Specs { spcStartTime = 0, 
                 spcStopTime = 500, 
                 spcDT = 0.1,
-                spcMethod = RungeKutta4 }
+                spcMethod = RungeKutta4,
+                spcGeneratorType = SimpleGenerator }
 
 -- | This is an analog of 'V.generateM' included in the Haskell platform.
 generateArray :: (Ix i, Monad m) => (i, i) -> (i -> m a) -> m (Array i a)

@@ -19,14 +19,7 @@ import System.Random
 import Control.Monad
 import Control.Monad.Trans
 
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Event
-import Simulation.Aivika.Ref
-import Simulation.Aivika.QueueStrategy
-import Simulation.Aivika.Resource
-import Simulation.Aivika.Process
+import Simulation.Aivika
 
 import Simulation.Aivika.Experiment
 import Simulation.Aivika.Experiment.LastValueView
@@ -39,7 +32,8 @@ import Simulation.Aivika.Experiment.FinalTableView
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
                 spcDT = 1.0,
-                spcMethod = RungeKutta4 }
+                spcMethod = RungeKutta4,
+                spcGeneratorType = SimpleGenerator }
 
 description =
   "Model MachRep3. Variation of models MachRep1, MachRep2. Two machines, but " ++
@@ -115,10 +109,10 @@ model =
               
               machine pid
 
-     runProcessInStartTime IncludingCurrentEvents
+     runProcessInStartTimeUsingId IncludingCurrentEvents
        pid1 (machine pid2)
 
-     runProcessInStartTime IncludingCurrentEvents
+     runProcessInStartTimeUsingId IncludingCurrentEvents
        pid2 (machine pid1)
      
      let result = 
