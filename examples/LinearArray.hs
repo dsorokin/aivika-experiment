@@ -16,14 +16,7 @@ import qualified Data.Vector as V
 
 import Simulation.Aivika
 import Simulation.Aivika.SystemDynamics
-
 import Simulation.Aivika.Experiment
-import Simulation.Aivika.Experiment.LastValueView
-import Simulation.Aivika.Experiment.TableView
-import Simulation.Aivika.Experiment.ExperimentSpecsView
-import Simulation.Aivika.Experiment.FinalStatsView
-import Simulation.Aivika.Experiment.TimingStatsView
-import Simulation.Aivika.Experiment.FinalTableView
 
 specs = Specs { spcStartTime = 0, 
                 spcStopTime = 500, 
