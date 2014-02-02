@@ -433,6 +433,12 @@ class SeriesContainer c where
   -- | Get the signal for the container.
   containerSignal :: c a => Maybe (Signal ())
 
+instance SeriesContainer Parameter where
+
+  containerData = liftParameter
+
+  containerSignal = const Nothing
+
 instance SeriesContainer Simulation where
 
   containerData = liftSimulation
