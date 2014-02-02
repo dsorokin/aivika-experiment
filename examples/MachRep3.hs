@@ -29,6 +29,9 @@ import Simulation.Aivika.Experiment.FinalStatsView
 import Simulation.Aivika.Experiment.ExperimentSpecsView
 import Simulation.Aivika.Experiment.FinalTableView
 
+meanUpTime = 1.0
+meanRepairTime = 0.5
+
 specs = Specs { spcStartTime = 0.0,
                 spcStopTime = 1000.0,
                 spcDT = 1.0,
@@ -62,14 +65,6 @@ experiment =
        outputView $ defaultFinalTableView {
          finalTableSeries = ["x"] } ] }
 
-upRate = 1.0 / 1.0       -- reciprocal of mean up time
-repairRate = 1.0 / 0.5   -- reciprocal of mean repair time
-
-exprnd :: Double -> IO Double
-exprnd lambda =
-  do x <- getStdRandom random
-     return (- log x / lambda)
-     
 model :: Simulation ExperimentData
 model =
   do -- number of machines currently up
@@ -85,14 +80,15 @@ model =
      
      let machine :: ProcessId -> Process ()
          machine pid =
-           do startUpTime <- liftDynamics time
-              upTime <- liftIO $ exprnd upRate
+           do upTime <-
+                liftParameter $
+                randomExponential meanUpTime
               holdProcess upTime
-              finishUpTime <- liftDynamics time
-              liftEvent $ modifyRef totalUpTime 
-                (+ (finishUpTime - startUpTime))
-                
-              liftEvent $ modifyRef nUp $ \a -> a - 1
+              liftEvent $
+                modifyRef totalUpTime (+ upTime) 
+              
+              liftEvent $
+                modifyRef nUp (+ (-1))
               nUp' <- liftEvent $ readRef nUp
               if nUp' == 1
                 then passivateProcess
@@ -102,9 +98,12 @@ model =
                           reactivateProcess pid
               
               requestResource repairPerson
-              repairTime <- liftIO $ exprnd repairRate
+              repairTime <-
+                liftParameter $
+                randomExponential meanRepairTime
               holdProcess repairTime
-              liftEvent $ modifyRef nUp $ \a -> a + 1
+              liftEvent $
+                modifyRef nUp (+ 1)
               releaseResource repairPerson
               
               machine pid
