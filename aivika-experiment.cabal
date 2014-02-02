@@ -27,6 +27,7 @@ extra-source-files:  examples/MachRep3.hs
 library
 
     exposed-modules: Simulation.Aivika.Experiment
+                     Simulation.Aivika.Experiment.Types
                      Simulation.Aivika.Experiment.HtmlWriter
                      Simulation.Aivika.Experiment.LastValueView
                      Simulation.Aivika.Experiment.TableView

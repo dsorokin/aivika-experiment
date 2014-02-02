@@ -20,7 +20,7 @@ module Simulation.Aivika.Experiment.SamplingStatsSource
 
 import Simulation.Aivika.Event
 import Simulation.Aivika.Statistics
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 
 -- | Represents the optimized source of data for the statistics.
 data SamplingStatsSource a = SingleValueSource (Event a)

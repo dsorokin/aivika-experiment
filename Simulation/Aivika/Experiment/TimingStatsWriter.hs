@@ -15,7 +15,7 @@ module Simulation.Aivika.Experiment.TimingStatsWriter
        (TimingStatsWriter(..),
         defaultTimingStatsWriter) where
 
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 
 import Simulation.Aivika.Statistics

@@ -22,7 +22,7 @@ import Control.Concurrent.MVar
 import Data.IORef
 import Data.Maybe
 
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.SamplingStatsWriter
 import Simulation.Aivika.Experiment.SamplingStatsSource

@@ -16,7 +16,7 @@ module Simulation.Aivika.Experiment.ExperimentSpecsWriter
        (ExperimentSpecsWriter(..),
         defaultExperimentSpecsWriter) where
 
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 
 import Simulation.Aivika.Specs

@@ -18,7 +18,7 @@ module Simulation.Aivika.Experiment.ExperimentSpecsView
 import Control.Monad
 import Control.Monad.Trans
 
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
 

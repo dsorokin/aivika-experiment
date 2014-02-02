@@ -27,7 +27,7 @@ import Control.Monad
 
 import Simulation.Aivika.Event
 import Simulation.Aivika.Statistics
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 
 -- | Represents the optimized source of data for constructing the list.
 data ListSource a = SingleValueSource (Event a)

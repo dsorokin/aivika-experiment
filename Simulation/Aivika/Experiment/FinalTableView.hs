@@ -27,7 +27,7 @@ import Data.Maybe
 import System.IO
 import System.FilePath
 
-import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 
 import Simulation.Aivika.Specs
