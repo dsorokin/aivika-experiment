@@ -39,17 +39,17 @@ defaultExperimentSpecsView =
                         experimentSpecsDescription = "It shows the experiment specs.",
                         experimentSpecsWriter      = defaultExperimentSpecsWriter }
 
-instance View ExperimentSpecsView where  
+instance ExperimentView ExperimentSpecsView where  
   
   outputView v = 
     let reporter exp dir =
           do st <- newExperimentSpecs v exp
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = return (),
-                               reporterSimulate   = const $ return $ return (),
-                               reporterTOCHtml    = experimentSpecsTOCHtml st,
-                               reporterHtml       = experimentSpecsHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = const $ return $ return (),
+                                         reporterTOCHtml    = experimentSpecsTOCHtml st,
+                                         reporterHtml       = experimentSpecsHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data ExperimentSpecsViewState =

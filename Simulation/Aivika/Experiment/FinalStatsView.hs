@@ -59,17 +59,17 @@ defaultFinalStatsView =
                    finalStatsPredicate   = return True,
                    finalStatsSeries      = [] }
 
-instance View FinalStatsView where
+instance ExperimentView FinalStatsView where
   
   outputView v = 
     let reporter exp dir =
           do st <- newFinalStats v exp dir
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = return (),
-                               reporterSimulate   = simulateFinalStats st,
-                               reporterTOCHtml    = finalStatsTOCHtml st,
-                               reporterHtml       = finalStatsHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = simulateFinalStats st,
+                                         reporterTOCHtml    = finalStatsTOCHtml st,
+                                         reporterHtml       = finalStatsHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data FinalStatsViewState =

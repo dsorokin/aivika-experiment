@@ -70,17 +70,17 @@ defaultTimingStatsView =
                     timingStatsPredicate   = return True,
                     timingStatsSeries      = [] }
 
-instance View TimingStatsView where  
+instance ExperimentView TimingStatsView where  
   
   outputView v = 
     let reporter exp dir =
           do st <- newTimingStats v exp
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = return (),
-                               reporterSimulate   = simulateTimingStats st,
-                               reporterTOCHtml    = timingStatsTOCHtml st,
-                               reporterHtml       = timingStatsHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = simulateTimingStats st,
+                                         reporterTOCHtml    = timingStatsTOCHtml st,
+                                         reporterHtml       = timingStatsHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data TimingStatsViewState =

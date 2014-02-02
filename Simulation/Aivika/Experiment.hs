@@ -38,9 +38,9 @@ module Simulation.Aivika.Experiment
         seriesListWithSubscript,
         seriesArrayWithSubscript,
         seriesVectorWithSubscript,
-        View(..),
-        Generator(..),
-        Reporter(..),
+        ExperimentView(..),
+        ExperimentGenerator(..),
+        ExperimentReporter(..),
         DirectoryName(..),
         resolveDirectoryName,
         FileName(..),
@@ -98,9 +98,9 @@ data Experiment =
                -- ^ The experiment description.
                experimentVerbose       :: Bool,
                -- ^ Whether the process of generating the results is verbose.
-               experimentGenerators    :: [Generator], 
+               experimentGenerators    :: [ExperimentGenerator], 
                -- ^ The experiment generators.
-               experimentIndexHtml     :: Experiment -> [Reporter] -> FilePath -> IO (),
+               experimentIndexHtml     :: Experiment -> [ExperimentReporter] -> FilePath -> IO (),
                -- ^ Create the @index.html@ file after the simulation is finished
                -- in the specified directory.
                experimentNumCapabilities :: IO Int
@@ -122,20 +122,20 @@ defaultExperiment =
                experimentNumCapabilities = getNumCapabilities }
 
 -- | This is a generator of the reporter.                     
-data Generator = 
-  Generator { generateReporter :: Experiment -> FilePath -> IO Reporter 
-              -- ^ Generate a reporter for the specified directory,
-              -- where the @index.html@ file will be saved for the 
-              -- current simulation experiment.
-            }
+data ExperimentGenerator = 
+  ExperimentGenerator { generateReporter :: Experiment -> FilePath -> IO ExperimentReporter 
+                        -- ^ Generate a reporter for the specified directory,
+                        -- where the @index.html@ file will be saved for the 
+                        -- current simulation experiment.
+                      }
 
 -- | Defines a view in which the simulation results should be saved.
 -- You should extend this type class to define your own views such
 -- as the PDF document.
-class View v where
+class ExperimentView v where
   
   -- | Create a generator of the reporter.
-  outputView :: v -> Generator
+  outputView :: v -> ExperimentGenerator
   
 -- | Represents the series. It is usually something, or
 -- an array of something, or a list of such values which
@@ -251,32 +251,32 @@ experimentSeriesProviders expdata labels =
       seriesProviders entity
 
 -- | Defines what creates the simulation reports.
-data Reporter =
-  Reporter { reporterInitialise :: IO (),
-             -- ^ Initialise the reporting before 
-             -- the simulation runs are started.
-             reporterFinalise   :: IO (),
-             -- ^ Finalise the reporting after
-             -- all simulation runs are finished.
-             reporterSimulate   :: ExperimentData -> Event (Event ()),
-             -- ^ Start the simulation run in the start time
-             -- and return a finalizer that will be called 
-             -- in the stop time after the last signal is 
-             -- triggered and processed.
-             reporterTOCHtml :: Int -> HtmlWriter (),
-             -- ^ Return a TOC (Table of Contents) item for 
-             -- the HTML index file after the finalisation 
-             -- function is called, i.e. in the very end. 
-             -- The agument specifies the ordered number of 
-             -- the item.
-             --
-             -- You should wrap your HTML in 'writeHtmlListItem'.
-             reporterHtml :: Int -> HtmlWriter ()
-             -- ^ Return an HTML code for the index file
-             -- after the finalisation function is called,
-             -- i.e. in the very end. The agument specifies
-             -- the ordered number of the item.
-           }
+data ExperimentReporter =
+  ExperimentReporter { reporterInitialise :: IO (),
+                       -- ^ Initialise the reporting before 
+                       -- the simulation runs are started.
+                       reporterFinalise   :: IO (),
+                       -- ^ Finalise the reporting after
+                       -- all simulation runs are finished.
+                       reporterSimulate   :: ExperimentData -> Event (Event ()),
+                       -- ^ Start the simulation run in the start time
+                       -- and return a finalizer that will be called 
+                       -- in the stop time after the last signal is 
+                       -- triggered and processed.
+                       reporterTOCHtml :: Int -> HtmlWriter (),
+                       -- ^ Return a TOC (Table of Contents) item for 
+                       -- the HTML index file after the finalisation 
+                       -- function is called, i.e. in the very end. 
+                       -- The agument specifies the ordered number of 
+                       -- the item.
+                       --
+                       -- You should wrap your HTML in 'writeHtmlListItem'.
+                       reporterHtml :: Int -> HtmlWriter ()
+                       -- ^ Return an HTML code for the index file
+                       -- after the finalisation function is called,
+                       -- i.e. in the very end. The agument specifies
+                       -- the ordered number of the item.
+                     }
 
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
@@ -334,7 +334,7 @@ runExperimentWithExecutor executor e simulation =
      return ()
      
 -- | Create an index HTML file.     
-createIndexHtml :: Experiment -> [Reporter] -> FilePath -> IO ()
+createIndexHtml :: Experiment -> [ExperimentReporter] -> FilePath -> IO ()
 createIndexHtml e reporters path = 
   do let html :: HtmlWriter ()
          html = 

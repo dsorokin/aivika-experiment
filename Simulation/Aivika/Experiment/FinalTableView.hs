@@ -94,17 +94,17 @@ defaultFinalTableView =
                    finalTablePredicate   = return True,
                    finalTableSeries      = [] }
 
-instance View FinalTableView where
+instance ExperimentView FinalTableView where
   
   outputView v = 
     let reporter exp dir =
           do st <- newFinalTable v exp dir
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = finaliseFinalTable st,
-                               reporterSimulate   = simulateFinalTable st,
-                               reporterTOCHtml    = finalTableTOCHtml st,
-                               reporterHtml       = finalTableHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = finaliseFinalTable st,
+                                         reporterSimulate   = simulateFinalTable st,
+                                         reporterTOCHtml    = finalTableTOCHtml st,
+                                         reporterHtml       = finalTableHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data FinalTableViewState =

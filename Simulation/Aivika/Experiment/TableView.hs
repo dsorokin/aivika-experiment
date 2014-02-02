@@ -112,17 +112,17 @@ defaultTableView =
               tablePredicate   = return True,
               tableSeries      = [] }
   
-instance View TableView where
+instance ExperimentView TableView where
   
   outputView v = 
     let reporter exp dir =
           do st <- newTable v exp dir
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = return (),
-                               reporterSimulate   = simulateTable st,
-                               reporterTOCHtml    = tableTOCHtml st,
-                               reporterHtml       = tableHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = simulateTable st,
+                                         reporterTOCHtml    = tableTOCHtml st,
+                                         reporterHtml       = tableHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data TableViewState =

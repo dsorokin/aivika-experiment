@@ -64,17 +64,17 @@ defaultLastValueView =
                   lastValueFormatter   = id,
                   lastValueSeries      = [] }
   
-instance View LastValueView where  
+instance ExperimentView LastValueView where  
   
   outputView v = 
     let reporter exp dir =
           do st <- newLastValues v exp
-             return Reporter { reporterInitialise = return (),
-                               reporterFinalise   = return (),
-                               reporterSimulate   = simulateLastValues st,
-                               reporterTOCHtml    = lastValueTOCHtml st,
-                               reporterHtml       = lastValueHtml st }
-    in Generator { generateReporter = reporter }
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = simulateLastValues st,
+                                         reporterTOCHtml    = lastValueTOCHtml st,
+                                         reporterHtml       = lastValueHtml st }
+    in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
 data LastValueViewState =
