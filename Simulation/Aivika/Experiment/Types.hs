@@ -201,7 +201,7 @@ data ExperimentData =
 -- | Prepare data for the simulation experiment in start time from the series 
 -- with the specified labels.
 experimentDataInStartTime :: [(String, SeriesEntity)] -> Simulation ExperimentData
-experimentDataInStartTime m = runEventInStartTime IncludingEarlierEvents d where
+experimentDataInStartTime m = runDynamicsInStartTime $ runEventWith EarlierEvents d where
   d = do signalInIntegTimes <- newSignalInIntegTimes
          signalInStartTime  <- newSignalInStartTime
          signalInStopTime   <- newSignalInStopTime
@@ -315,10 +315,11 @@ runExperimentWithExecutor executor e simulation =
      let simulate :: Simulation ()
          simulate =
            do d  <- simulation
-              fs <- runEventInStartTime IncludingEarlierEvents $
+              fs <- runDynamicsInStartTime $
+                    runEventWith EarlierEvents $
                     forM reporters $ \reporter ->
                     reporterSimulate reporter d
-              runEventInStopTime IncludingCurrentEvents $
+              runEventInStopTime $
                 sequence_ fs
      executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
