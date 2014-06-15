@@ -72,6 +72,7 @@ import GHC.Conc (getNumCapabilities)
 
 import Simulation.Aivika hiding (Var, readVar, varChanged_)
 import Simulation.Aivika.Var
+import qualified Simulation.Aivika.Ref.Light as LR
 
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
@@ -455,6 +456,12 @@ instance SeriesContainer Ref where
   containerData = readRef
 
   containerSignal = Just . refChanged_
+
+instance SeriesContainer LR.Ref where
+
+  containerData = LR.readRef
+
+  containerSignal = const Nothing
 
 instance SeriesContainer Var where
 
