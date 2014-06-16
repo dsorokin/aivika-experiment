@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.FinalStatsView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -59,10 +61,10 @@ defaultFinalStatsView =
                    finalStatsPredicate   = return True,
                    finalStatsSeries      = [] }
 
-instance ExperimentView FinalStatsView where
+instance ExperimentView FinalStatsView r where
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newFinalStats v exp dir
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
@@ -72,9 +74,9 @@ instance ExperimentView FinalStatsView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalStatsViewState =
+data FinalStatsViewState r =
   FinalStatsViewState { finalStatsView       :: FinalStatsView,
-                        finalStatsExperiment :: Experiment,
+                        finalStatsExperiment :: Experiment r,
                         finalStatsLock       :: MVar (),
                         finalStatsResults    :: IORef (Maybe FinalStatsResults) }
 
@@ -84,7 +86,7 @@ data FinalStatsResults =
                       finalStatsValues :: [IORef (SamplingStats Double)] }
   
 -- | Create a new state of the view.
-newFinalStats :: FinalStatsView -> Experiment -> FilePath -> IO FinalStatsViewState
+newFinalStats :: FinalStatsView -> Experiment r -> FilePath -> IO (FinalStatsViewState r)
 newFinalStats view exp dir =
   do l <- newMVar () 
      r <- newIORef Nothing
@@ -94,14 +96,14 @@ newFinalStats view exp dir =
                                   finalStatsResults    = r }
        
 -- | Create new statistics results.
-newFinalStatsResults :: [String] -> Experiment -> IO FinalStatsResults
+newFinalStatsResults :: [String] -> Experiment r -> IO FinalStatsResults
 newFinalStatsResults names exp =
   do values <- forM names $ \_ -> liftIO $ newIORef emptySamplingStats
      return FinalStatsResults { finalStatsNames  = names,
                                 finalStatsValues = values }
        
 -- | Simulation the specified series.
-simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Event (Event ())
+simulateFinalStats :: FinalStatsViewState r -> ExperimentData -> Event (Event ())
 simulateFinalStats st expdata =
   do let protolabels = finalStatsSeries $ finalStatsView st
          protoproviders = flip map protolabels $ \protolabel ->
@@ -142,7 +144,7 @@ simulateFinalStats st expdata =
      return $ return ()
 
 -- | Get the HTML code.     
-finalStatsHtml :: FinalStatsViewState -> Int -> HtmlWriter ()
+finalStatsHtml :: FinalStatsViewState r -> Int -> HtmlWriter ()
 finalStatsHtml st index =
   do header st index
      results <- liftIO $ readIORef (finalStatsResults st)
@@ -157,7 +159,7 @@ finalStatsHtml st index =
               do stats <- liftIO $ readIORef value
                  write writer name stats
 
-header :: FinalStatsViewState -> Int -> HtmlWriter ()
+header :: FinalStatsViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalStatsTitle $ finalStatsView st)
@@ -167,7 +169,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalStatsTOCHtml :: FinalStatsViewState -> Int -> HtmlWriter ()
+finalStatsTOCHtml :: FinalStatsViewState r -> Int -> HtmlWriter ()
 finalStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

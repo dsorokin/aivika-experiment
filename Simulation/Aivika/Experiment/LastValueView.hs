@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.LastValueView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -64,10 +66,10 @@ defaultLastValueView =
                   lastValueFormatter   = id,
                   lastValueSeries      = [] }
   
-instance ExperimentView LastValueView where  
+instance ExperimentView LastValueView r where  
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newLastValues v exp
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
@@ -77,13 +79,13 @@ instance ExperimentView LastValueView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data LastValueViewState =
+data LastValueViewState r =
   LastValueViewState { lastValueView       :: LastValueView,
-                       lastValueExperiment :: Experiment,
+                       lastValueExperiment :: Experiment r,
                        lastValueMap        :: M.Map Int (IORef [(String, String)]) }
   
 -- | Create a new state of the view.
-newLastValues :: LastValueView -> Experiment -> IO LastValueViewState
+newLastValues :: LastValueView -> Experiment r -> IO (LastValueViewState r)
 newLastValues view exp =
   do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
@@ -93,7 +95,7 @@ newLastValues view exp =
                                  lastValueMap        = m }
        
 -- | Get the last values during the simulation.
-simulateLastValues :: LastValueViewState -> ExperimentData -> Event (Event ())
+simulateLastValues :: LastValueViewState r -> ExperimentData -> Event (Event ())
 simulateLastValues st expdata =
   do let labels = lastValueSeries $ lastValueView st
          input  =
@@ -114,7 +116,7 @@ simulateLastValues st expdata =
      return $ return ()
      
 -- | Get the HTML code.     
-lastValueHtml :: LastValueViewState -> Int -> HtmlWriter ()     
+lastValueHtml :: LastValueViewState r -> Int -> HtmlWriter ()     
 lastValueHtml st index =
   let n = experimentRunCount $ lastValueExperiment st
   in if n == 1
@@ -122,7 +124,7 @@ lastValueHtml st index =
      else lastValueHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-lastValueHtmlSingle :: LastValueViewState -> Int -> HtmlWriter ()
+lastValueHtmlSingle :: LastValueViewState r -> Int -> HtmlWriter ()
 lastValueHtmlSingle st index =
   do header st index
      let r = fromJust $ M.lookup 0 (lastValueMap st)
@@ -131,7 +133,7 @@ lastValueHtmlSingle st index =
        formatPair pair (lastValueFormatter $ lastValueView st)
 
 -- | Get the HTML code for multiple runs
-lastValueHtmlMultiple :: LastValueViewState -> Int -> HtmlWriter ()
+lastValueHtmlMultiple :: LastValueViewState r -> Int -> HtmlWriter ()
 lastValueHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ lastValueExperiment st
@@ -148,7 +150,7 @@ lastValueHtmlMultiple st index =
           forM_ pairs $ \pair ->
             formatPair pair (lastValueFormatter $ lastValueView st)
 
-header :: LastValueViewState -> Int -> HtmlWriter ()
+header :: LastValueViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (lastValueTitle $ lastValueView st)
@@ -165,7 +167,7 @@ formatPair (name, value) formatter =
      writeHtmlText $ formatter value
           
 -- | Get the TOC item     
-lastValueTOCHtml :: LastValueViewState -> Int -> HtmlWriter ()
+lastValueTOCHtml :: LastValueViewState r -> Int -> HtmlWriter ()
 lastValueTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

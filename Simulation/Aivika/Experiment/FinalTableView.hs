@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.FinalTableView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -94,10 +96,10 @@ defaultFinalTableView =
                    finalTablePredicate   = return True,
                    finalTableSeries      = [] }
 
-instance ExperimentView FinalTableView where
+instance ExperimentView FinalTableView r where
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newFinalTable v exp dir
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = finaliseFinalTable st,
@@ -107,9 +109,9 @@ instance ExperimentView FinalTableView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalTableViewState =
+data FinalTableViewState r =
   FinalTableViewState { finalTableView       :: FinalTableView,
-                        finalTableExperiment :: Experiment,
+                        finalTableExperiment :: Experiment r,
                         finalTableDir        :: FilePath, 
                         finalTableFile       :: IORef (Maybe FilePath),
                         finalTableLock       :: MVar (),
@@ -121,7 +123,7 @@ data FinalTableResults =
                       finalTableValues :: IORef (M.Map Int [String]) }
   
 -- | Create a new state of the view.
-newFinalTable :: FinalTableView -> Experiment -> FilePath -> IO FinalTableViewState
+newFinalTable :: FinalTableView -> Experiment r -> FilePath -> IO (FinalTableViewState r)
 newFinalTable view exp dir =
   do f <- newIORef Nothing
      l <- newMVar () 
@@ -134,14 +136,14 @@ newFinalTable view exp dir =
                                   finalTableResults    = r }
        
 -- | Create new table results.
-newFinalTableResults :: [String] -> Experiment -> IO FinalTableResults
+newFinalTableResults :: [String] -> Experiment r -> IO FinalTableResults
 newFinalTableResults names exp =
   do values <- newIORef M.empty 
      return FinalTableResults { finalTableNames  = names,
                                 finalTableValues = values }
        
 -- | Simulation of the specified series.
-simulateFinalTable :: FinalTableViewState -> ExperimentData -> Event (Event ())
+simulateFinalTable :: FinalTableViewState r -> ExperimentData -> Event (Event ())
 simulateFinalTable st expdata =
   do let labels = finalTableSeries $ finalTableView st
          providers = experimentSeriesProviders expdata labels
@@ -178,7 +180,7 @@ simulateFinalTable st expdata =
      return $ return ()
      
 -- | Save the results in the CSV file after the simulation is complete.
-finaliseFinalTable :: FinalTableViewState -> IO ()
+finaliseFinalTable :: FinalTableViewState r -> IO ()
 finaliseFinalTable st =
   do let run       = finalTableRunText $ finalTableView st
          formatter = finalTableFormatter $ finalTableView st
@@ -217,7 +219,7 @@ finaliseFinalTable st =
             writeIORef (finalTableFile st) $ Just file
      
 -- | Get the HTML code.     
-finalTableHtml :: FinalTableViewState -> Int -> HtmlWriter ()
+finalTableHtml :: FinalTableViewState r -> Int -> HtmlWriter ()
 finalTableHtml st index =
   do header st index
      file <- liftIO $ readIORef (finalTableFile st)
@@ -228,7 +230,7 @@ finalTableHtml st index =
          writeHtmlLink (makeRelative (finalTableDir st) f) $
          writeHtmlText (finalTableLinkText $ finalTableView st)
 
-header :: FinalTableViewState -> Int -> HtmlWriter ()
+header :: FinalTableViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalTableTitle $ finalTableView st)
@@ -238,7 +240,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalTableTOCHtml :: FinalTableViewState -> Int -> HtmlWriter ()
+finalTableTOCHtml :: FinalTableViewState r -> Int -> HtmlWriter ()
 finalTableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

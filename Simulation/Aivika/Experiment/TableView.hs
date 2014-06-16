@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.TableView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -112,10 +114,10 @@ defaultTableView =
               tablePredicate   = return True,
               tableSeries      = [] }
   
-instance ExperimentView TableView where
+instance ExperimentView TableView r where
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newTable v exp dir
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
@@ -125,14 +127,14 @@ instance ExperimentView TableView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TableViewState =
+data TableViewState r =
   TableViewState { tableView       :: TableView,
-                   tableExperiment :: Experiment,
+                   tableExperiment :: Experiment r,
                    tableDir        :: FilePath, 
                    tableMap        :: M.Map Int FilePath }
   
 -- | Create a new state of the view.
-newTable :: TableView -> Experiment -> FilePath -> IO TableViewState
+newTable :: TableView -> Experiment r -> FilePath -> IO (TableViewState r)
 newTable view exp dir =
   do let n = experimentRunCount exp
      fs <- forM [0..(n - 1)] $ \i -> 
@@ -148,7 +150,7 @@ newTable view exp dir =
                              tableMap          = m }
        
 -- | Write the tables during the simulation.
-simulateTable :: TableViewState -> ExperimentData -> Event (Event ())
+simulateTable :: TableViewState r -> ExperimentData -> Event (Event ())
 simulateTable st expdata =
   do let labels = tableSeries $ tableView st
          providers = experimentSeriesProviders expdata labels
@@ -191,7 +193,7 @@ simulateTable st expdata =
           hClose h  -- close the file
      
 -- | Get the HTML code.     
-tableHtml :: TableViewState -> Int -> HtmlWriter ()     
+tableHtml :: TableViewState r -> Int -> HtmlWriter ()     
 tableHtml st index =
   let n = experimentRunCount $ tableExperiment st
   in if n == 1
@@ -199,7 +201,7 @@ tableHtml st index =
      else tableHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-tableHtmlSingle :: TableViewState -> Int -> HtmlWriter ()
+tableHtmlSingle :: TableViewState r -> Int -> HtmlWriter ()
 tableHtmlSingle st index =
   do header st index
      let f = fromJust $ M.lookup 0 (tableMap st)
@@ -208,7 +210,7 @@ tableHtmlSingle st index =
        writeHtmlText (tableLinkText $ tableView st)
 
 -- | Get the HTML code for multiple runs
-tableHtmlMultiple :: TableViewState -> Int -> HtmlWriter ()
+tableHtmlMultiple :: TableViewState r -> Int -> HtmlWriter ()
 tableHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ tableExperiment st
@@ -223,7 +225,7 @@ tableHtmlMultiple st index =
             writeHtmlLink (makeRelative (tableDir st) f) $
             writeHtmlText sublink
 
-header :: TableViewState -> Int -> HtmlWriter ()
+header :: TableViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (tableTitle $ tableView st)
@@ -233,7 +235,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-tableTOCHtml :: TableViewState -> Int -> HtmlWriter ()
+tableTOCHtml :: TableViewState r -> Int -> HtmlWriter ()
 tableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

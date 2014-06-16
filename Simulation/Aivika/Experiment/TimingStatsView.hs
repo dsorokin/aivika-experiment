@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.TimingStatsView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -70,10 +72,10 @@ defaultTimingStatsView =
                     timingStatsPredicate   = return True,
                     timingStatsSeries      = [] }
 
-instance ExperimentView TimingStatsView where  
+instance ExperimentView TimingStatsView r where  
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newTimingStats v exp
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
@@ -83,13 +85,13 @@ instance ExperimentView TimingStatsView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TimingStatsViewState =
+data TimingStatsViewState r =
   TimingStatsViewState { timingStatsView       :: TimingStatsView,
-                         timingStatsExperiment :: Experiment,
+                         timingStatsExperiment :: Experiment r,
                          timingStatsMap        :: M.Map Int (IORef [(String, IORef (TimingStats Double))]) }
   
 -- | Create a new state of the view.
-newTimingStats :: TimingStatsView -> Experiment -> IO TimingStatsViewState
+newTimingStats :: TimingStatsView -> Experiment r -> IO (TimingStatsViewState r)
 newTimingStats view exp =
   do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
@@ -99,7 +101,7 @@ newTimingStats view exp =
                                    timingStatsMap        = m }
        
 -- | Get the timing statistics during the simulation.
-simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Event (Event ())
+simulateTimingStats :: TimingStatsViewState r -> ExperimentData -> Event (Event ())
 simulateTimingStats st expdata =
   do let labels = timingStatsSeries $ timingStatsView st
          input providers =
@@ -132,7 +134,7 @@ simulateTimingStats st expdata =
      return $ return ()
      
 -- | Get the HTML code.     
-timingStatsHtml :: TimingStatsViewState -> Int -> HtmlWriter ()     
+timingStatsHtml :: TimingStatsViewState r -> Int -> HtmlWriter ()     
 timingStatsHtml st index =
   let n = experimentRunCount $ timingStatsExperiment st
   in if n == 1
@@ -140,7 +142,7 @@ timingStatsHtml st index =
      else timingStatsHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-timingStatsHtmlSingle :: TimingStatsViewState -> Int -> HtmlWriter ()
+timingStatsHtmlSingle :: TimingStatsViewState r -> Int -> HtmlWriter ()
 timingStatsHtmlSingle st index =
   do header st index
      let r = fromJust $ M.lookup 0 (timingStatsMap st)
@@ -152,7 +154,7 @@ timingStatsHtmlSingle st index =
           write writer name stats
 
 -- | Get the HTML code for multiple runs
-timingStatsHtmlMultiple :: TimingStatsViewState -> Int -> HtmlWriter ()
+timingStatsHtmlMultiple :: TimingStatsViewState r -> Int -> HtmlWriter ()
 timingStatsHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ timingStatsExperiment st
@@ -172,7 +174,7 @@ timingStatsHtmlMultiple st index =
                    write  = timingStatsWrite writer
                write writer name stats
 
-header :: TimingStatsViewState -> Int -> HtmlWriter ()
+header :: TimingStatsViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (timingStatsTitle $ timingStatsView st)
@@ -182,7 +184,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-timingStatsTOCHtml :: TimingStatsViewState -> Int -> HtmlWriter ()
+timingStatsTOCHtml :: TimingStatsViewState r -> Int -> HtmlWriter ()
 timingStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

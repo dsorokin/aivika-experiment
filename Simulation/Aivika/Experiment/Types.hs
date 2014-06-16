@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
@@ -77,8 +77,8 @@ import qualified Simulation.Aivika.Ref.Light as LR
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
--- | It defines the simulation experiment.
-data Experiment = 
+-- | It defines the simulation experiment with the specified rendering backend.
+data Experiment r = 
   Experiment { experimentSpecs         :: Specs,
                -- ^ The simulation specs for the experiment.
                experimentRunCount      :: Int,
@@ -91,9 +91,9 @@ data Experiment =
                -- ^ The experiment description.
                experimentVerbose       :: Bool,
                -- ^ Whether the process of generating the results is verbose.
-               experimentGenerators    :: [ExperimentGenerator], 
+               experimentGenerators    :: [ExperimentGenerator r], 
                -- ^ The experiment generators.
-               experimentIndexHtml     :: Experiment -> [ExperimentReporter] -> FilePath -> IO (),
+               experimentIndexHtml     :: Experiment r -> [ExperimentReporter] -> FilePath -> IO (),
                -- ^ Create the @index.html@ file after the simulation is finished
                -- in the specified directory.
                experimentNumCapabilities :: IO Int
@@ -102,7 +102,7 @@ data Experiment =
              }
 
 -- | The default experiment.
-defaultExperiment :: Experiment
+defaultExperiment :: Experiment r
 defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 SimpleGenerator,
                experimentRunCount      = 1,
@@ -114,9 +114,9 @@ defaultExperiment =
                experimentIndexHtml     = createIndexHtml,
                experimentNumCapabilities = getNumCapabilities }
 
--- | This is a generator of the reporter.                     
-data ExperimentGenerator = 
-  ExperimentGenerator { generateReporter :: Experiment -> FilePath -> IO ExperimentReporter 
+-- | This is a generator of the reporter with the specified rendering backend.                     
+data ExperimentGenerator r = 
+  ExperimentGenerator { generateReporter :: Experiment r -> r -> FilePath -> IO ExperimentReporter 
                         -- ^ Generate a reporter for the specified directory,
                         -- where the @index.html@ file will be saved for the 
                         -- current simulation experiment.
@@ -125,10 +125,10 @@ data ExperimentGenerator =
 -- | Defines a view in which the simulation results should be saved.
 -- You should extend this type class to define your own views such
 -- as the PDF document.
-class ExperimentView v where
+class ExperimentView v r where
   
   -- | Create a generator of the reporter.
-  outputView :: v -> ExperimentGenerator
+  outputView :: v -> ExperimentGenerator r
   
 -- | Represents the series. It is usually something, or
 -- an array of something, or a list of such values which
@@ -274,10 +274,10 @@ data ExperimentReporter =
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: Experiment -> Simulation ExperimentData -> IO ()
+runExperiment :: Experiment r -> r -> Simulation ExperimentData -> IO ()
 runExperiment = runExperimentWithExecutor sequence_
   
--- | Run the simulation experiment parallelly. 
+-- | Run the simulation experiment in parallel. 
 --
 -- Make sure that you compile with @-threaded@ and supply @+RTS -N2 -RTS@ 
 -- to the generated Haskell executable on dual core processor, 
@@ -289,7 +289,7 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: Experiment -> Simulation ExperimentData -> IO ()
+runExperimentParallel :: Experiment r -> r -> Simulation ExperimentData -> IO ()
 runExperimentParallel e = runExperimentWithExecutor executor e 
   where executor tasks =
           do n <- experimentNumCapabilities e
@@ -298,9 +298,9 @@ runExperimentParallel e = runExperimentWithExecutor executor e
                         
 -- | Run the simulation experiment with the specified executor.
 runExperimentWithExecutor :: ([IO ()] -> IO ()) ->
-                             Experiment -> 
+                             Experiment r -> r -> 
                              Simulation ExperimentData -> IO ()
-runExperimentWithExecutor executor e simulation = 
+runExperimentWithExecutor executor e r simulation = 
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
          dirName    = experimentDirectoryName e
@@ -310,7 +310,7 @@ runExperimentWithExecutor executor e simulation =
        do putStr "Using directory " 
           putStrLn path
      createDirectoryIfMissing True path
-     reporters <- mapM (\x -> generateReporter x e path)
+     reporters <- mapM (\x -> generateReporter x e r path)
                   generators
      forM_ reporters reporterInitialise
      let simulate :: Simulation ()
@@ -328,7 +328,7 @@ runExperimentWithExecutor executor e simulation =
      return ()
      
 -- | Create an index HTML file.     
-createIndexHtml :: Experiment -> [ExperimentReporter] -> FilePath -> IO ()
+createIndexHtml :: Experiment r -> [ExperimentReporter] -> FilePath -> IO ()
 createIndexHtml e reporters path = 
   do let html :: HtmlWriter ()
          html = 

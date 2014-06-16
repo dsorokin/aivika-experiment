@@ -1,4 +1,6 @@
 
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.ExperimentSpecsView
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -23,26 +25,26 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
 
 -- | Defines the 'View' that shows the experiment specs.
-data ExperimentSpecsView =
+data ExperimentSpecsView r =
   ExperimentSpecsView { experimentSpecsTitle       :: String,
                         -- ^ The title for the view.
                         experimentSpecsDescription :: String,
                         -- ^ The description for the view.
-                        experimentSpecsWriter      :: ExperimentSpecsWriter
+                        experimentSpecsWriter      :: ExperimentSpecsWriter r
                         -- ^ It shows the specs.
                       }
   
 -- | This is the default view.
-defaultExperimentSpecsView :: ExperimentSpecsView
+defaultExperimentSpecsView :: ExperimentSpecsView r
 defaultExperimentSpecsView =  
   ExperimentSpecsView { experimentSpecsTitle       = "Experiment Specs",
                         experimentSpecsDescription = "It shows the experiment specs.",
                         experimentSpecsWriter      = defaultExperimentSpecsWriter }
 
-instance ExperimentView ExperimentSpecsView where  
+instance ExperimentView (ExperimentSpecsView r) r where  
   
   outputView v = 
-    let reporter exp dir =
+    let reporter exp renderer dir =
           do st <- newExperimentSpecs v exp
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
@@ -52,18 +54,18 @@ instance ExperimentView ExperimentSpecsView where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data ExperimentSpecsViewState =
-  ExperimentSpecsViewState { experimentSpecsView       :: ExperimentSpecsView,
-                             experimentSpecsExperiment :: Experiment }
+data ExperimentSpecsViewState r =
+  ExperimentSpecsViewState { experimentSpecsView       :: ExperimentSpecsView r,
+                             experimentSpecsExperiment :: Experiment r }
   
 -- | Create a new state of the view.
-newExperimentSpecs :: ExperimentSpecsView -> Experiment -> IO ExperimentSpecsViewState
+newExperimentSpecs :: ExperimentSpecsView r -> Experiment r -> IO (ExperimentSpecsViewState r)
 newExperimentSpecs view exp =
   return ExperimentSpecsViewState { experimentSpecsView       = view,
                                     experimentSpecsExperiment = exp }
        
 -- | Get the HTML code.     
-experimentSpecsHtml :: ExperimentSpecsViewState -> Int -> HtmlWriter ()     
+experimentSpecsHtml :: ExperimentSpecsViewState r -> Int -> HtmlWriter ()     
 experimentSpecsHtml st index =
   do header st index
      let writer = experimentSpecsWriter (experimentSpecsView st)
@@ -71,7 +73,7 @@ experimentSpecsHtml st index =
          exp    = experimentSpecsExperiment st
      write writer exp
 
-header :: ExperimentSpecsViewState -> Int -> HtmlWriter ()
+header :: ExperimentSpecsViewState r -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (experimentSpecsTitle $ experimentSpecsView st)
@@ -81,7 +83,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-experimentSpecsTOCHtml :: ExperimentSpecsViewState -> Int -> HtmlWriter ()
+experimentSpecsTOCHtml :: ExperimentSpecsViewState r -> Int -> HtmlWriter ()
 experimentSpecsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $
