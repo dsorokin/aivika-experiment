@@ -58,7 +58,8 @@ library
                      aivika >= 1.2.1
 
     extensions:      FlexibleInstances,
-                     MultiParamTypeClasses
+                     MultiParamTypeClasses,
+                     RankNTypes
                      
     ghc-options:     -O2
 

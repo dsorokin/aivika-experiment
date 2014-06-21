@@ -1,4 +1,6 @@
 
+{-# LANGUAGE RankNTypes #-}
+
 -- |
 -- Module     : Simulation.Aivika.Experiment.ExperimentSpecsWriter
 -- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
@@ -23,7 +25,7 @@ import Simulation.Aivika.Specs
 
 -- | Defines a writer that knows how to represent the
 -- experiment specs as the HTML table.
-data ExperimentSpecsWriter r =
+data ExperimentSpecsWriter =
   ExperimentSpecsWriter { experimentSpecsWidth         :: Int,
                           -- ^ The width of the HTML table.
                           experimentSpecsNameText     :: String,
@@ -46,13 +48,15 @@ data ExperimentSpecsWriter r =
                           -- ^ Translated text \"the 4-th order Runge-Kutta\".
                           experimentSpecsFormatter     :: ShowS,
                           -- ^ The formatter of numbers.
-                          experimentSpecsWrite :: ExperimentSpecsWriter r ->  
-                                                  Experiment r -> HtmlWriter ()
+                          experimentSpecsWrite :: forall r.
+                                                  ExperimentSpecsWriter
+                                                  -> Experiment r
+                                                  -> HtmlWriter ()
                           -- ^ This function creates HTML.
                         }
 
 -- | The default writer.
-defaultExperimentSpecsWriter :: ExperimentSpecsWriter r
+defaultExperimentSpecsWriter :: ExperimentSpecsWriter
 defaultExperimentSpecsWriter =
   ExperimentSpecsWriter { 
     experimentSpecsWidth = 400,
@@ -125,7 +129,7 @@ defaultExperimentSpecsWriter =
     }
 
 -- | Return the method name.
-methodName :: Method -> ExperimentSpecsWriter r -> String
+methodName :: Method -> ExperimentSpecsWriter -> String
 methodName Euler       = experimentSpecsEulerText
 methodName RungeKutta2 = experimentSpecsRungeKutta2Text
 methodName RungeKutta4 = experimentSpecsRungeKutta4Text

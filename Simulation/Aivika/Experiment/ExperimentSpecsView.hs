@@ -25,23 +25,23 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
 
 -- | Defines the 'View' that shows the experiment specs.
-data ExperimentSpecsView r =
+data ExperimentSpecsView =
   ExperimentSpecsView { experimentSpecsTitle       :: String,
                         -- ^ The title for the view.
                         experimentSpecsDescription :: String,
                         -- ^ The description for the view.
-                        experimentSpecsWriter      :: ExperimentSpecsWriter r
+                        experimentSpecsWriter      :: ExperimentSpecsWriter
                         -- ^ It shows the specs.
                       }
   
 -- | This is the default view.
-defaultExperimentSpecsView :: ExperimentSpecsView r
+defaultExperimentSpecsView :: ExperimentSpecsView
 defaultExperimentSpecsView =  
   ExperimentSpecsView { experimentSpecsTitle       = "Experiment Specs",
                         experimentSpecsDescription = "It shows the experiment specs.",
                         experimentSpecsWriter      = defaultExperimentSpecsWriter }
 
-instance ExperimentView (ExperimentSpecsView r) r where  
+instance ExperimentView ExperimentSpecsView r where  
   
   outputView v = 
     let reporter exp renderer dir =
@@ -55,11 +55,11 @@ instance ExperimentView (ExperimentSpecsView r) r where
   
 -- | The state of the view.
 data ExperimentSpecsViewState r =
-  ExperimentSpecsViewState { experimentSpecsView       :: ExperimentSpecsView r,
+  ExperimentSpecsViewState { experimentSpecsView       :: ExperimentSpecsView,
                              experimentSpecsExperiment :: Experiment r }
   
 -- | Create a new state of the view.
-newExperimentSpecs :: ExperimentSpecsView r -> Experiment r -> IO (ExperimentSpecsViewState r)
+newExperimentSpecs :: ExperimentSpecsView -> Experiment r -> IO (ExperimentSpecsViewState r)
 newExperimentSpecs view exp =
   return ExperimentSpecsViewState { experimentSpecsView       = view,
                                     experimentSpecsExperiment = exp }
