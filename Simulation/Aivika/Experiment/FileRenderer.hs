@@ -14,10 +14,11 @@ module Simulation.Aivika.Experiment.FileRenderer
        (FileRenderer(..),
         HtmlRenderer(..)) where
 
--- ^ The experiment renderer that allows saving the simulation results in files.
+-- | The experiment renderer that allows saving the simulation results in files.
 class FileRenderer a
 
--- ^ The default renderer that creates an HTML page for the simulation experiment.
+-- | The default renderer that creates an HTML page for the simulation experiment.
 data HtmlRenderer = HtmlRenderer
+                    -- ^ The default HTML renderer.
 
 instance FileRenderer HtmlRenderer
