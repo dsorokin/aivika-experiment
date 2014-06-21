@@ -36,7 +36,7 @@ description =
   "until both machines are down. We find the proportion of up time. It " ++
   "should come out to about 0.45."
 
-experiment :: Experiment
+experiment :: FileRenderer r => Experiment r
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
@@ -113,4 +113,4 @@ model =
        [("x", seriesEntity "The proportion of up time" result),
         ("t", seriesEntity "Simulation time" time)]
 
-main = runExperiment experiment model
+main = runExperiment experiment HtmlRenderer model

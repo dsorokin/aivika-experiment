@@ -48,7 +48,7 @@ model n =
          ("m", seriesEntity "M" m),
          ("c", seriesEntity "C" c)]
 
-experiment :: Experiment
+experiment :: FileRenderer r => Experiment r
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
@@ -69,4 +69,4 @@ experiment =
        outputView $ defaultFinalStatsView {
          finalStatsSeries = ["m", "c"] } ] } 
 
-main = runExperiment experiment (model 51)
+main = runExperiment experiment HtmlRenderer (model 51)
