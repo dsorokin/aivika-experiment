@@ -59,14 +59,14 @@ data FinalTableView =
                    -- @
                    --   finalTableLinkText = \"Download the CSV file\"
                    -- @
-                   finalTableFileName    :: FileName,
+                   finalTableFileName    :: ExperimentFilePath,
                    -- ^ It defines the file name for the CSV file. 
                    -- It may include special variable @$TITLE@.
                    --
                    -- An example is
                    --
                    -- @
-                   --   finalTableFileName = UniqueFileName \"$TITLE\" \".csv\"
+                   --   finalTableFileName = UniqueFilePath \"$TITLE.csv\"
                    -- @
                    finalTableSeparator   :: String,
                    -- ^ It defines the separator for the view. 
@@ -90,7 +90,7 @@ defaultFinalTableView =
                    finalTableDescription = "It refers to the CSV file with the results in the final time points.",
                    finalTableRunText     = "Run",
                    finalTableLinkText    = "Download the CSV file",
-                   finalTableFileName    = UniqueFileName "$TITLE" ".csv",
+                   finalTableFileName    = UniqueFilePath "$TITLE.csv",
                    finalTableSeparator   = ",",
                    finalTableFormatter   = id,
                    finalTablePredicate   = return True,
@@ -193,9 +193,9 @@ finaliseFinalTable st =
          do let names  = finalTableNames results
                 values = finalTableValues results
             m <- readIORef values 
-            file <- resolveFileName 
-                    (Just $ finalTableDir st)
-                    (finalTableFileName $ finalTableView st) $
+            file <- fmap (flip replaceExtension ".csv") $
+                    resolveFilePath (finalTableDir st) $
+                    expandFilePath (finalTableFileName $ finalTableView st) $
                     M.fromList [("$TITLE", title)]
             -- create a new file
             h <- liftIO $ openFile file WriteMode

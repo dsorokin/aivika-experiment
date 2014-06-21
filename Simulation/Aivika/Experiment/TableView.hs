@@ -76,7 +76,7 @@ data TableView =
               -- this kind is not displayed. Instead, only one 
               -- link is shown, which text is defined by the 
               -- 'tableLinkText' field.
-              tableFileName    :: FileName,
+              tableFileName    :: ExperimentFilePath,
               -- ^ It defines the file name for each CSV file. 
               -- It may include special variables @$TITLE@, 
               -- @$RUN_INDEX@ and @$RUN_COUNT@.
@@ -84,7 +84,7 @@ data TableView =
               -- An example is
               --
               -- @
-              --   tableFileName = UniqueFileName \"$TITLE - $RUN_INDEX\" \".csv\"
+              --   tableFileName = UniqueFilePath \"$TITLE - $RUN_INDEX.csv\"
               -- @
               tableSeparator   :: String,
               -- ^ It defines the separator for the view. 
@@ -108,7 +108,7 @@ defaultTableView =
               tableDescription = "This section contains the CSV file(s) with the simulation results.",
               tableLinkText    = "Download the CSV file",
               tableRunLinkText = "$LINK / Run $RUN_INDEX of $RUN_COUNT",
-              tableFileName    = UniqueFileName "$TITLE - $RUN_INDEX" ".csv",
+              tableFileName    = UniqueFilePath "$TITLE - $RUN_INDEX.csv",
               tableSeparator   = ",",
               tableFormatter   = id,
               tablePredicate   = return True,
@@ -137,8 +137,10 @@ data TableViewState r =
 newTable :: TableView -> Experiment r -> FilePath -> IO (TableViewState r)
 newTable view exp dir =
   do let n = experimentRunCount exp
-     fs <- forM [0..(n - 1)] $ \i -> 
-       resolveFileName (Just dir) (tableFileName view) $
+     fs <- forM [0..(n - 1)] $ \i ->
+       fmap (flip replaceExtension ".csv") $
+       resolveFilePath dir $
+       expandFilePath (tableFileName view) $
        M.fromList [("$TITLE", tableTitle view),
                    ("$RUN_INDEX", show $ i + 1),
                    ("$RUN_COUNT", show n)]

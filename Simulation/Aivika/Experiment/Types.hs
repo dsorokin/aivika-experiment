@@ -41,10 +41,9 @@ module Simulation.Aivika.Experiment.Types
         ExperimentView(..),
         ExperimentGenerator(..),
         ExperimentReporter(..),
-        DirectoryName(..),
-        resolveDirectoryName,
-        FileName(..),
-        resolveFileName) where
+        ExperimentFilePath(..),
+        resolveFilePath,
+        expandFilePath) where
 
 import Control.Monad
 import Control.Monad.State
@@ -66,7 +65,7 @@ import Data.Monoid
 
 import qualified System.IO.UTF8 as UTF8
 import System.Directory
-import System.FilePath (combine)
+import System.FilePath
 
 import GHC.Conc (getNumCapabilities)
 
@@ -83,7 +82,7 @@ data Experiment r =
                -- ^ The simulation specs for the experiment.
                experimentRunCount      :: Int,
                -- ^ How many simulation runs should be launched.
-               experimentDirectoryName :: DirectoryName,
+               experimentDirectoryName :: ExperimentFilePath,
                -- ^ The directory in which the output results should be saved.
                experimentTitle         :: String,
                -- ^ The experiment title.
@@ -106,7 +105,7 @@ defaultExperiment :: Experiment r
 defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 SimpleGenerator,
                experimentRunCount      = 1,
-               experimentDirectoryName = UniqueDirectoryName "experiment",
+               experimentDirectoryName = UniqueFilePath "experiment",
                experimentTitle         = "Simulation Experiment",
                experimentDescription   = "",
                experimentVerbose       = True,
@@ -305,7 +304,7 @@ runExperimentWithExecutor executor e r simulation =
          runCount   = experimentRunCount e
          dirName    = experimentDirectoryName e
          generators = experimentGenerators e
-     path <- resolveDirectoryName Nothing dirName M.empty
+     path <- resolveFilePath "" dirName
      when (experimentVerbose e) $
        do putStr "Using directory " 
           putStrLn path
@@ -349,74 +348,43 @@ createIndexHtml e reporters path =
        do putStr "Generated file "
           putStrLn file
 
--- | Specifies the directory name, unique or writable.
-data DirectoryName = WritableDirectoryName String
-                     -- ^ The directory which is overwritten in 
-                     -- case if it existed before.
-                   | UniqueDirectoryName String
-                     -- ^ The directory which is always unique,
-                     -- when a prefix is added to the name
-                     -- in case of need.
+-- | Specifies the file name, unique or writable, which can be appended with extension if required.
+data ExperimentFilePath = WritableFilePath FilePath
+                          -- ^ The file which is overwritten in 
+                          -- case if it existed before.
+                        | UniqueFilePath FilePath
+                          -- ^ The file which is always unique,
+                          -- when an automatically generated suffix
+                          -- is added to the name in case of need.
                 
--- | Specifies the file name, unique or writable.
-data FileName = WritableFileName String String
-                -- ^ The file which is overwritten in 
-                -- case if it existed before. The first
-                -- field defines a name or its prototype.
-                -- The second field is the file extension.
-              | UniqueFileName String String
-                -- ^ The file which is always unique,
-                -- when a prefix is added to the name
-                -- in case of need. The first field
-                -- defines a name or its prototype.
-                -- The second field is the file exension.
-                
--- | Resolve the directory name relative to the passed in directory 
--- as the first argument, replacing the specified strings according the map. 
-resolveDirectoryName :: Maybe FilePath -> DirectoryName -> M.Map String String -> IO String
-resolveDirectoryName dir (WritableDirectoryName name) map = 
-  return $ replaceName (combineName dir name) map
-resolveDirectoryName dir (UniqueDirectoryName name) map =
-  let x = replaceName name map
+-- | Resolve the file path relative to the specified directory passed in the first argument
+-- and taking into account a possible requirement to have an unique file name.
+resolveFilePath :: FilePath -> ExperimentFilePath -> IO FilePath
+resolveFilePath dir (WritableFilePath path) =
+  return $ dir </> path
+resolveFilePath dir (UniqueFilePath path)   =
+  let (name, ext) = splitExtension path
       loop y i =
-        do let n = combineName dir y
+        do let n = dir </> addExtension y ext
            f1 <- doesFileExist n
            f2 <- doesDirectoryExist n
            if f1 || f2
-             then loop (x ++ "(" ++ show i ++ ")") (i + 1)
+             then loop (name ++ "(" ++ show i ++ ")") (i + 1)
              else return n
-  in loop x 2
-     
--- | Resolve the file name relative to the passed in directory 
--- as the first argument, replacing the specified strings according the map. 
-resolveFileName :: Maybe FilePath -> FileName -> M.Map String String -> IO String
-resolveFileName dir (WritableFileName name ext) map = 
-  return $ replaceName (combineName dir name ++ ext) map
-resolveFileName dir (UniqueFileName name ext) map =
-  let x = replaceName name map
-      loop y i =
-        do let n = combineName dir y ++ ext
-           f1 <- doesFileExist n
-           f2 <- doesDirectoryExist n
-           if f1 || f2
-             then loop (x ++ "(" ++ show i ++ ")") (i + 1)
-             else return n
-  in loop x 2
-     
--- | Replace the name according the specified table.
-replaceName :: String -> M.Map String String -> String     
-replaceName name map = name' where
+  in loop name 2
+
+-- | Expand the file path using the specified table of substitutions.
+expandFilePath :: ExperimentFilePath -> M.Map String String -> ExperimentFilePath
+expandFilePath (WritableFilePath path) map = WritableFilePath (expandTemplates path map)
+expandFilePath (UniqueFilePath path) map = UniqueFilePath (expandTemplates path map)
+
+-- | Expand the string templates using the specified table of substitutions.
+expandTemplates :: String -> M.Map String String -> String     
+expandTemplates name map = name' where
   ((), name') = flip runState name $
                 forM_ (M.assocs map) $ \(k, v) ->
                 do a <- get
                    put $ replace k v a
-                   
--- | Combine the file name with the directory name.
-combineName :: Maybe String -> String -> String                   
-combineName dir name =
-  case dir of
-    Nothing  -> name
-    Just dir -> combine dir name
 
 -- | Represent a container for simulation data.
 class SeriesContainer c where
