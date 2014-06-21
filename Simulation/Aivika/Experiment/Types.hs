@@ -273,7 +273,13 @@ data ExperimentReporter =
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: Experiment r -> r -> Simulation ExperimentData -> IO ()
+runExperiment :: Experiment r
+                 -- ^ the simulation experiment to run
+                 -> r
+                 -- ^ the rendering backend
+                 -> Simulation ExperimentData
+                 -- ^ the simulation results received from the model
+                 -> IO ()
 runExperiment = runExperimentWithExecutor sequence_
   
 -- | Run the simulation experiment in parallel. 
@@ -288,7 +294,13 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: Experiment r -> r -> Simulation ExperimentData -> IO ()
+runExperimentParallel :: Experiment r
+                         -- ^ the simulation experiment to run
+                         -> r
+                         -- ^ the rendering backend
+                         -> Simulation ExperimentData
+                         -- ^ the simulation results received from the model
+                         -> IO ()
 runExperimentParallel e = runExperimentWithExecutor executor e 
   where executor tasks =
           do n <- experimentNumCapabilities e
@@ -296,9 +308,15 @@ runExperimentParallel e = runExperimentWithExecutor executor e
                parallel_ pool tasks
                         
 -- | Run the simulation experiment with the specified executor.
-runExperimentWithExecutor :: ([IO ()] -> IO ()) ->
-                             Experiment r -> r -> 
-                             Simulation ExperimentData -> IO ()
+runExperimentWithExecutor :: ([IO ()] -> IO ())
+                             -- ^ an executor that allows parallelizing the simulation if required
+                             -> Experiment r
+                             -- ^ the simulation experiment to run
+                             -> r
+                             -- ^ the rendering backend
+                             -> Simulation ExperimentData
+                             -- ^ the simulation results received from the model
+                             -> IO ()
 runExperimentWithExecutor executor e r simulation = 
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
