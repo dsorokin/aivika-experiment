@@ -13,6 +13,7 @@
 module Simulation.Aivika.Experiment
        (-- * Modules
         module Simulation.Aivika.Experiment.Types,
+        module Simulation.Aivika.Experiment.FileRenderer,
         module Simulation.Aivika.Experiment.HtmlWriter,
         module Simulation.Aivika.Experiment.LastValueView,
         module Simulation.Aivika.Experiment.TableView,
@@ -29,6 +30,7 @@ module Simulation.Aivika.Experiment
         module Simulation.Aivika.Experiment.Utils) where
 
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.FileRenderer
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.LastValueView
 import Simulation.Aivika.Experiment.TableView

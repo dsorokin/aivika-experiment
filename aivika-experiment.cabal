@@ -28,6 +28,7 @@ library
 
     exposed-modules: Simulation.Aivika.Experiment
                      Simulation.Aivika.Experiment.Types
+                     Simulation.Aivika.Experiment.FileRenderer
                      Simulation.Aivika.Experiment.HtmlWriter
                      Simulation.Aivika.Experiment.LastValueView
                      Simulation.Aivika.Experiment.TableView

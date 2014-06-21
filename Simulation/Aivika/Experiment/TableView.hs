@@ -28,6 +28,7 @@ import System.IO
 import System.FilePath
 
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.FileRenderer
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
@@ -114,7 +115,7 @@ defaultTableView =
               tablePredicate   = return True,
               tableSeries      = [] }
   
-instance ExperimentView TableView r where
+instance FileRenderer r => ExperimentView TableView r where
   
   outputView v = 
     let reporter exp renderer dir =

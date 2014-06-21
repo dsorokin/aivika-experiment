@@ -30,6 +30,7 @@ import System.IO
 import System.FilePath
 
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.FileRenderer
 import Simulation.Aivika.Experiment.HtmlWriter
 
 import Simulation.Aivika.Specs
@@ -96,7 +97,7 @@ defaultFinalTableView =
                    finalTablePredicate   = return True,
                    finalTableSeries      = [] }
 
-instance ExperimentView FinalTableView r where
+instance FileRenderer r => ExperimentView FinalTableView r where
   
   outputView v = 
     let reporter exp renderer dir =
