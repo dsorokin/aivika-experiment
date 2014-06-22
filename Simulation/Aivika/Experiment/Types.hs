@@ -43,7 +43,8 @@ module Simulation.Aivika.Experiment.Types
         ExperimentReporter(..),
         ExperimentFilePath(..),
         resolveFilePath,
-        expandFilePath) where
+        expandFilePath,
+        mapFilePath) where
 
 import Control.Monad
 import Control.Monad.State
@@ -403,6 +404,11 @@ expandTemplates name map = name' where
                 forM_ (M.assocs map) $ \(k, v) ->
                 do a <- get
                    put $ replace k v a
+
+-- | Transform the file path using the specified function.
+mapFilePath :: (FilePath -> FilePath) -> ExperimentFilePath -> ExperimentFilePath
+mapFilePath f (WritableFilePath path) = WritableFilePath (f path)
+mapFilePath f (UniqueFilePath path) = UniqueFilePath (f path) 
 
 -- | Represent a container for simulation data.
 class SeriesContainer c where
