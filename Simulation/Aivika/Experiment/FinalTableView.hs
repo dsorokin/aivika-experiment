@@ -194,8 +194,8 @@ finaliseFinalTable st =
          do let names  = finalTableNames results
                 values = finalTableValues results
             m <- readIORef values 
-            file <- fmap (flip replaceExtension ".csv") $
-                    resolveFilePath (finalTableDir st) $
+            file <- resolveFilePath (finalTableDir st) $
+                    mapFilePath (replaceExtension ".csv") $
                     expandFilePath (finalTableFileName $ finalTableView st) $
                     M.fromList [("$TITLE", title)]
             -- create a new file
