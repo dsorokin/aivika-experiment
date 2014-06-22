@@ -140,7 +140,7 @@ newTable view exp dir =
   do let n = experimentRunCount exp
      fs <- forM [0..(n - 1)] $ \i ->
        resolveFilePath dir $
-       mapFilePath (replaceExtension ".csv") $
+       mapFilePath (flip replaceExtension ".csv") $
        expandFilePath (tableFileName view) $
        M.fromList [("$TITLE", tableTitle view),
                    ("$RUN_INDEX", show $ i + 1),

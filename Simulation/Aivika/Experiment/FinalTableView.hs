@@ -195,7 +195,7 @@ finaliseFinalTable st =
                 values = finalTableValues results
             m <- readIORef values 
             file <- resolveFilePath (finalTableDir st) $
-                    mapFilePath (replaceExtension ".csv") $
+                    mapFilePath (flip replaceExtension ".csv") $
                     expandFilePath (finalTableFileName $ finalTableView st) $
                     M.fromList [("$TITLE", title)]
             -- create a new file
