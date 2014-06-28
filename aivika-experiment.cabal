@@ -22,7 +22,6 @@ tested-with:     GHC == 7.6.3
 
 extra-source-files:  examples/MachRep3.hs
                      examples/LinearArray.hs
-                     examples/README
 
 library
 
@@ -55,7 +54,7 @@ library
                      split >= 0.2.2,
                      network >= 2.3.0.13,
                      parallel-io >= 0.3.2.1,
-                     aivika >= 1.2.1
+                     aivika >= 1.3
 
     extensions:      FlexibleInstances,
                      MultiParamTypeClasses,
