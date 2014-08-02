@@ -1,5 +1,5 @@
 name:            aivika-experiment
-version:         1.3.5
+version:         1.4
 synopsis:        Simulation experiments for the Aivika library
 description:
     This package allows defining simulation experiments for the Aivika
@@ -18,7 +18,7 @@ maintainer:      David Sorokin <david.sorokin@gmail.com>
 homepage:        http://github.com/dsorokin/aivika-experiment
 cabal-version:   >= 1.6
 build-type:      Simple
-tested-with:     GHC == 7.6.3
+tested-with:     GHC == 7.8.3
 
 extra-source-files:  examples/MachRep3.hs
                      examples/LinearArray.hs
@@ -54,7 +54,7 @@ library
                      split >= 0.2.2,
                      network >= 2.3.0.13,
                      parallel-io >= 0.3.2.1,
-                     aivika >= 1.3
+                     aivika >= 1.4
 
     extensions:      FlexibleInstances,
                      MultiParamTypeClasses,
