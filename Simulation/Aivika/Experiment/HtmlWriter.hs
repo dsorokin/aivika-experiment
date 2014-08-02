@@ -1,11 +1,11 @@
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.HtmlWriter
--- Copyright  : Copyright (c) 2012, David Sorokin <david.sorokin@gmail.com>
+-- Copyright  : Copyright (c) 2012-2014, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.4.1
+-- Tested with: GHC 7.8.3
 --
 -- This is an utility module that provides an HTML writer.
 --
@@ -41,6 +41,7 @@ module Simulation.Aivika.Experiment.HtmlWriter
 
 import Control.Monad
 import Control.Monad.Trans
+import Control.Applicative
 
 import Network.URI
 
@@ -64,6 +65,15 @@ instance MonadIO HtmlWriter where
   liftIO m = HtmlWriter $ \f ->
     do x <- m
        return (x, f)
+
+instance Functor HtmlWriter where
+
+  fmap f m = m >>= \a -> return (f a)
+
+instance Applicative HtmlWriter where
+
+  pure = return
+  (<*>) = ap
        
 -- | Write the HTML code.
 writeHtml :: String -> HtmlWriter ()
