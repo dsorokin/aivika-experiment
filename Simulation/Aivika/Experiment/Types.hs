@@ -417,7 +417,7 @@ class SeriesContainer c where
   containerData :: c a -> Event a
 
   -- | Get the signal for the container.
-  containerSignal :: c a => Maybe (Signal ())
+  containerSignal :: c a -> Maybe (Signal ())
 
 instance SeriesContainer Parameter where
 
