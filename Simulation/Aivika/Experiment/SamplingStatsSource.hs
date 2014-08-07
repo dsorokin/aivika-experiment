@@ -12,14 +12,13 @@
 
 module Simulation.Aivika.Experiment.SamplingStatsSource
        (SamplingStatsSource,
-        providerToDoubleStatsSource,
-        providerToIntStatsSource,
+        resultItemToDoubleStatsSource,
+        resultItemToIntStatsSource,
         SamplingStatsData,
         samplingStatsSourceData,
         addDataToSamplingStats) where
 
-import Simulation.Aivika.Event
-import Simulation.Aivika.Statistics
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
 
 -- | Represents the optimized source of data for the statistics.
@@ -30,23 +29,23 @@ data SamplingStatsSource a = SingleValueSource (Event a)
 data SamplingStatsData a = SingleValueData !a
                          | MultipleValueData (SamplingStats a)
 
--- | Try to return the source of statistical data by the specified provider.
-providerToDoubleStatsSource :: SeriesProvider -> Maybe (SamplingStatsSource Double)
-providerToDoubleStatsSource provider =
-  case providerToDouble provider of
+-- | Try to return the source of statistical data by the specified result item.
+resultItemToDoubleStatsSource :: ResultItem -> Maybe (SamplingStatsSource Double)
+resultItemToDoubleStatsSource item =
+  case resultItemToDouble item of
     Just x -> Just $ SingleValueSource x
     Nothing ->
-      case providerToDoubleStats provider of
+      case resultItemToDoubleStats item of
         Just x -> Just $ MultipleValueSource x
         Nothing -> Nothing
         
--- | Try to return the source of statistical data.
-providerToIntStatsSource :: SeriesProvider -> Maybe (SamplingStatsSource Int)
-providerToIntStatsSource provider =
-  case providerToInt provider of
+-- | Try to return the source of statistical data by the specified result item.
+resultItemToIntStatsSource :: ResultItem -> Maybe (SamplingStatsSource Int)
+resultItemToIntStatsSource item =
+  case resultItemToInt item of
     Just x -> Just $ SingleValueSource x
     Nothing ->
-      case providerToIntStats provider of
+      case resultItemToIntStats item of
         Just x -> Just $ MultipleValueSource x
         Nothing -> Nothing
 
