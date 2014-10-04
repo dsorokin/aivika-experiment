@@ -7,7 +7,7 @@
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.6.3
+-- Tested with: GHC 7.8.3
 --
 -- The module defines 'FinalStatsView' gathers the statistics
 -- in the final time points for different simulation runs.
@@ -24,16 +24,11 @@ import Control.Concurrent.MVar
 import Data.IORef
 import Data.Maybe
 
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.SamplingStatsWriter
-import Simulation.Aivika.Experiment.SamplingStatsSource
-
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Event
-import Simulation.Aivika.Signal
-import Simulation.Aivika.Statistics
+import Simulation.Aivika.Experiment.MRef
 
 -- | Defines the 'View' that gathers the statistics
 -- in the final time points.
@@ -47,38 +42,41 @@ data FinalStatsView =
                    finalStatsPredicate   :: Event Bool,
                    -- ^ It specifies the predicate that defines
                    -- when we count data when gathering the statistics.
-                   finalStatsSeries      :: [String]
-                   -- ^ It contains the labels of data for which
-                   -- the statistics is collected.
+                   finalStatsTransform   :: ResultTransform,
+                   -- ^ The transform applied to the results before receiving series.
+                   finalStatsSeries      :: ResultTransform 
+                   -- ^ It defines the series for which the statistics to be collected.
                  }
   
 -- | The default statistics view.  
 defaultFinalStatsView :: FinalStatsView
 defaultFinalStatsView = 
   FinalStatsView { finalStatsTitle       = "Final Statistics",
-                   finalStatsDescription = "The statistical data are gathered in the final time points for all runs.",
+                   finalStatsDescription = "Statistics is gathered in final time points for all runs.",
                    finalStatsWriter      = defaultSamplingStatsWriter,
                    finalStatsPredicate   = return True,
-                   finalStatsSeries      = [] }
+                   finalStatsTransform   = id,
+                   finalStatsSeries      = id }
 
-instance ExperimentView FinalStatsView r where
+instance ExperimentView FinalStatsView WebPageRenderer WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newFinalStats v exp dir
+             let writer =
+                   WebPageWriter { reporterWriteTOCHtml = finalStatsTOCHtml st,
+                                   reporterWriteHtml    = finalStatsHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateFinalStats st,
-                                         reporterTOCHtml    = finalStatsTOCHtml st,
-                                         reporterHtml       = finalStatsHtml st }
+                                         reporterRequest    = const writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalStatsViewState r =
+data FinalStatsViewState r a =
   FinalStatsViewState { finalStatsView       :: FinalStatsView,
-                        finalStatsExperiment :: Experiment r,
-                        finalStatsLock       :: MVar (),
-                        finalStatsResults    :: IORef (Maybe FinalStatsResults) }
+                        finalStatsExperiment :: Experiment r a,
+                        finalStatsResults    :: MRef (Maybe FinalStatsResults) }
 
 -- | The statistics results.
 data FinalStatsResults =
@@ -86,68 +84,57 @@ data FinalStatsResults =
                       finalStatsValues :: [IORef (SamplingStats Double)] }
   
 -- | Create a new state of the view.
-newFinalStats :: FinalStatsView -> Experiment r -> FilePath -> IO (FinalStatsViewState r)
+newFinalStats :: FinalStatsView -> Experiment r a -> FilePath -> IO (FinalStatsViewState r a)
 newFinalStats view exp dir =
-  do l <- newMVar () 
-     r <- newIORef Nothing
+  do r <- newMRef Nothing
      return FinalStatsViewState { finalStatsView       = view,
                                   finalStatsExperiment = exp,
-                                  finalStatsLock       = l, 
                                   finalStatsResults    = r }
        
 -- | Create new statistics results.
-newFinalStatsResults :: [String] -> Experiment r -> IO FinalStatsResults
+newFinalStatsResults :: [String] -> Experiment r a -> IO FinalStatsResults
 newFinalStatsResults names exp =
   do values <- forM names $ \_ -> liftIO $ newIORef emptySamplingStats
      return FinalStatsResults { finalStatsNames  = names,
                                 finalStatsValues = values }
+
+-- | Require to return unique final statistics results associated with the specified state. 
+requireFinalStatsResults :: FinalStatsViewState r a -> [String] -> IO FinalStatsResults
+requireFinalStatsResults st names =
+  maybeWriteMRef (finalStatsResults st)
+  (newFinalStatsResults names (finalStatsExperiment st)) $ \results ->
+  if (names /= finalStatsNames results)
+  then error "Series with different names are returned for different runs: requireFinalStatsResults"
+  else results
        
--- | Simulation the specified series.
-simulateFinalStats :: FinalStatsViewState r -> ExperimentData -> Event (Event ())
+-- | Simulate the specified series.
+simulateFinalStats :: FinalStatsViewState r a -> ExperimentData -> Event DisposableEvent
 simulateFinalStats st expdata =
-  do let protolabels = finalStatsSeries $ finalStatsView st
-         protoproviders = flip map protolabels $ \protolabel ->
-           experimentSeriesProviders expdata [protolabel]
-         providers = concat protoproviders
-         input =
-           flip map providers $ \provider ->
-           case providerToDoubleStatsSource provider of
-             Nothing -> error $
-                        "Cannot represent series " ++
-                        providerName provider ++ 
-                        " as a source of double values: simulateFinalStats"
-             Just input -> samplingStatsSourceData input
-         names = map providerName providers
-         predicate = finalStatsPredicate $ finalStatsView st
-         exp = finalStatsExperiment st
-         lock = finalStatsLock st
-     results <- liftIO $ readIORef (finalStatsResults st)
-     case results of
-       Nothing ->
-         liftIO $
-         do results <- newFinalStatsResults names exp
-            writeIORef (finalStatsResults st) $ Just results
-       Just results ->
-         when (names /= finalStatsNames results) $
-         error "Series with different names are returned for different runs: simulateFinalStats"
-     results <- liftIO $ fmap fromJust $ readIORef (finalStatsResults st)
-     let values = finalStatsValues results
-         h = filterSignalM (const predicate) $
-             experimentSignalInStopTime expdata
-     handleSignal_ h $ \_ ->
-       do xs <- sequence input
-          liftIO $ withMVar lock $ \() ->
-            forM_ (zip xs values) $ \(x, values) ->
-            do y <- readIORef values
-               let y' = addDataToSamplingStats x y
-               y' `seq` writeIORef values y'
-     return $ return ()
+  do let view    = finalStatsView st
+         rs      = finalStatsSeries view $
+                   finalStatsTransform view $
+                   experimentResults expdata
+         exts    = extractDoubleStatsEitherResults rs
+         signals = experimentPredefinedSignals expdata
+         signal  = filterSignalM (const predicate) $
+                   resultSignalInStopTime signals
+         names   = map resultExtractName exts
+         predicate = finalStatsPredicate view
+     results <- liftIO $ requireFinalStatsResults st names
+     let values = finalStatsValues results 
+     handleSignal signal $ \_ ->
+       forM_ (zip exts values) $ \(ext, value) ->
+       do x <- resultExtractData ext
+          liftIO $
+            do y <- readIORef value
+               let y' = combineSamplingStatsEither x y
+               y' `seq` writeIORef value y'
 
 -- | Get the HTML code.     
-finalStatsHtml :: FinalStatsViewState r -> Int -> HtmlWriter ()
+finalStatsHtml :: FinalStatsViewState r a -> Int -> HtmlWriter ()
 finalStatsHtml st index =
   do header st index
-     results <- liftIO $ readIORef (finalStatsResults st)
+     results <- liftIO $ readMRef (finalStatsResults st)
      case results of
        Nothing -> return ()
        Just results ->
@@ -159,7 +146,7 @@ finalStatsHtml st index =
               do stats <- liftIO $ readIORef value
                  write writer name stats
 
-header :: FinalStatsViewState r -> Int -> HtmlWriter ()
+header :: FinalStatsViewState r a -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalStatsTitle $ finalStatsView st)
@@ -169,7 +156,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalStatsTOCHtml :: FinalStatsViewState r -> Int -> HtmlWriter ()
+finalStatsTOCHtml :: FinalStatsViewState r a -> Int -> HtmlWriter ()
 finalStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

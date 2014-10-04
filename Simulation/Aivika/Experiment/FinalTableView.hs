@@ -7,7 +7,7 @@
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.6.3
+-- Tested with: GHC 7.8.3
 --
 -- The module defines 'FinalTableView' that saves the simulation
 -- results in the final time points for all simulation runs in
@@ -29,15 +29,10 @@ import Data.Maybe
 import System.IO
 import System.FilePath
 
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.FileRenderer
 import Simulation.Aivika.Experiment.HtmlWriter
-
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Parameter
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Event
-import Simulation.Aivika.Signal
+import Simulation.Aivika.Experiment.MRef
 
 -- | Defines the 'View' that saves the simulation 
 -- results in the final time points for all 
@@ -79,9 +74,10 @@ data FinalTableView =
                    finalTablePredicate   :: Event Bool,
                    -- ^ It specifies the predicate that defines
                    -- when we can save data in the table.
-                   finalTableSeries      :: [String] 
-                   -- ^ It contains the labels of data saved
-                   -- in the CSV file.
+                   finalTableTransform   :: ResultTransform,
+                   -- ^ The transform applied to the results before receiving series.
+                   finalTableSeries      :: ResultTransform 
+                   -- ^ It defines the series to save in the CSV file.
                  }
   
 -- | The default table view.  
@@ -95,105 +91,98 @@ defaultFinalTableView =
                    finalTableSeparator   = ",",
                    finalTableFormatter   = id,
                    finalTablePredicate   = return True,
-                   finalTableSeries      = [] }
+                   finalTableTransform   = expandResults,
+                   finalTableSeries      = id }
 
-instance FileRenderer r => ExperimentView FinalTableView r where
+instance ExperimentView FinalTableView WebPageRenderer WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newFinalTable v exp dir
+             let writer =
+                   WebPageWriter { reporterWriteTOCHtml = finalTableTOCHtml st,
+                                   reporterWriteHtml    = finalTableHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = finaliseFinalTable st,
                                          reporterSimulate   = simulateFinalTable st,
-                                         reporterTOCHtml    = finalTableTOCHtml st,
-                                         reporterHtml       = finalTableHtml st }
+                                         reporterRequest    = const writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalTableViewState r =
+data FinalTableViewState r a =
   FinalTableViewState { finalTableView       :: FinalTableView,
-                        finalTableExperiment :: Experiment r,
+                        finalTableExperiment :: Experiment r a,
                         finalTableDir        :: FilePath, 
                         finalTableFile       :: IORef (Maybe FilePath),
-                        finalTableLock       :: MVar (),
-                        finalTableResults    :: IORef (Maybe FinalTableResults) }
+                        finalTableResults    :: MRef (Maybe FinalTableResults) }
 
 -- | The table results.
 data FinalTableResults =
   FinalTableResults { finalTableNames  :: [String],
-                      finalTableValues :: IORef (M.Map Int [String]) }
+                      finalTableValues :: MRef (M.Map Int [String]) }
   
 -- | Create a new state of the view.
-newFinalTable :: FinalTableView -> Experiment r -> FilePath -> IO (FinalTableViewState r)
+newFinalTable :: FinalTableView -> Experiment r a -> FilePath -> IO (FinalTableViewState r a)
 newFinalTable view exp dir =
   do f <- newIORef Nothing
-     l <- newMVar () 
-     r <- newIORef Nothing
+     r <- newMRef Nothing
      return FinalTableViewState { finalTableView       = view,
                                   finalTableExperiment = exp,
                                   finalTableDir        = dir, 
                                   finalTableFile       = f,
-                                  finalTableLock       = l, 
                                   finalTableResults    = r }
        
 -- | Create new table results.
-newFinalTableResults :: [String] -> Experiment r -> IO FinalTableResults
+newFinalTableResults :: [String] -> Experiment r a -> IO FinalTableResults
 newFinalTableResults names exp =
-  do values <- newIORef M.empty 
+  do values <- newMRef M.empty 
      return FinalTableResults { finalTableNames  = names,
                                 finalTableValues = values }
+
+-- | Require to return unique final tables results associated with the specified state. 
+requireFinalTableResults :: FinalTableViewState r a -> [String] -> IO FinalTableResults
+requireFinalTableResults st names =
+  maybeWriteMRef (finalTableResults st)
+  (newFinalTableResults names (finalTableExperiment st)) $ \results ->
+  if (names /= finalTableNames results)
+  then error "Series with different names are returned for different runs: requireFinalTableResults"
+  else results
        
 -- | Simulation of the specified series.
-simulateFinalTable :: FinalTableViewState r -> ExperimentData -> Event (Event ())
+simulateFinalTable :: FinalTableViewState r a -> ExperimentData -> Event DisposableEvent
 simulateFinalTable st expdata =
-  do let labels = finalTableSeries $ finalTableView st
-         providers = experimentSeriesProviders expdata labels
-         input =
-           flip map providers $ \provider ->
-           case providerToString provider of
-             Nothing -> error $
-                        "Cannot represent series " ++
-                        providerName provider ++ 
-                        " as string values: simulateFinalTable"
-             Just input -> input
-         names = map providerName providers
-         predicate = finalTablePredicate $ finalTableView st
-         exp = finalTableExperiment st
-         lock = finalTableLock st
-     results <- liftIO $ readIORef (finalTableResults st)
-     case results of
-       Nothing ->
-         liftIO $
-         do results <- newFinalTableResults names exp
-            writeIORef (finalTableResults st) $ Just results
-       Just results ->
-         when (names /= finalTableNames results) $
-         error "Series with different names are returned for different runs: simulateFinalTable"
-     results <- liftIO $ fmap fromJust $ readIORef (finalTableResults st)
-     let values = finalTableValues results
-         h = filterSignalM (const predicate) $
-             experimentSignalInStopTime expdata
-     handleSignal_ h $ \_ ->
-       do xs <- sequence input
+  do let view    = finalTableView st
+         rs      = finalTableSeries view $
+                   finalTableTransform view $
+                   experimentResults expdata
+         exts    = extractStringResults rs
+         signals = experimentPredefinedSignals expdata
+         signal  = filterSignalM (const predicate) $
+                   resultSignalInStopTime signals
+         names   = map resultExtractName exts
+         predicate = finalTablePredicate view
+     results <- liftIO $ requireFinalTableResults st names
+     let values = finalTableValues results 
+     handleSignal signal $ \_ ->
+       do xs <- mapM resultExtractData exts
           i  <- liftParameter simulationIndex
-          liftIO $ withMVar lock $ \() ->
-            modifyIORef values $ M.insert i xs
-     return $ return ()
+          liftIO $ modifyMRef values $ M.insert i xs
      
 -- | Save the results in the CSV file after the simulation is complete.
-finaliseFinalTable :: FinalTableViewState r -> IO ()
+finaliseFinalTable :: FinalTableViewState r a -> IO ()
 finaliseFinalTable st =
-  do let run       = finalTableRunText $ finalTableView st
-         formatter = finalTableFormatter $ finalTableView st
-         title     = finalTableTitle $ finalTableView st
-         separator = finalTableSeparator $ finalTableView st
-     results <- readIORef $ finalTableResults st
+  do let view      = finalTableView st
+         run       = finalTableRunText view
+         formatter = finalTableFormatter view
+         title     = finalTableTitle view
+         separator = finalTableSeparator view
+     results <- readMRef $ finalTableResults st
      case results of
        Nothing -> return ()
        Just results ->
          do let names  = finalTableNames results
                 values = finalTableValues results
-            m <- readIORef values 
+            m <- readMRef values 
             file <- resolveFilePath (finalTableDir st) $
                     mapFilePath (flip replaceExtension ".csv") $
                     expandFilePath (finalTableFileName $ finalTableView st) $
@@ -220,7 +209,7 @@ finaliseFinalTable st =
             writeIORef (finalTableFile st) $ Just file
      
 -- | Get the HTML code.     
-finalTableHtml :: FinalTableViewState r -> Int -> HtmlWriter ()
+finalTableHtml :: FinalTableViewState r a -> Int -> HtmlWriter ()
 finalTableHtml st index =
   do header st index
      file <- liftIO $ readIORef (finalTableFile st)
@@ -231,7 +220,7 @@ finalTableHtml st index =
          writeHtmlLink (makeRelative (finalTableDir st) f) $
          writeHtmlText (finalTableLinkText $ finalTableView st)
 
-header :: FinalTableViewState r -> Int -> HtmlWriter ()
+header :: FinalTableViewState r a -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalTableTitle $ finalTableView st)
@@ -241,7 +230,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalTableTOCHtml :: FinalTableViewState r -> Int -> HtmlWriter ()
+finalTableTOCHtml :: FinalTableViewState r a -> Int -> HtmlWriter ()
 finalTableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

@@ -7,7 +7,7 @@
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.6.3
+-- Tested with: GHC 7.8.3
 --
 -- The module defines 'TimingStatsView' that shows the timing statistics
 -- for the variables for every simulation run separately.
@@ -23,19 +23,13 @@ import Control.Monad.Trans
 import qualified Data.Map as M
 import Data.IORef
 import Data.Maybe
+import Data.Monoid
 
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.TimingStatsWriter
 import Simulation.Aivika.Experiment.Utils (replace)
-
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Parameter
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Dynamics
-import Simulation.Aivika.Event
-import Simulation.Aivika.Signal
-import Simulation.Aivika.Statistics
 
 -- | Defines the 'View' that shows the timing statistics
 -- for variables for every simulation run separately.
@@ -58,8 +52,10 @@ data TimingStatsView =
                     -- ^ It shows the timing statistics.
                     timingStatsPredicate   :: Event Bool,
                     -- ^ Specifies when gathering the statistics.
-                    timingStatsSeries      :: [String] 
-                    -- ^ It contains the labels of the observed series.
+                    timingStatsTransform   :: ResultTransform,
+                    -- ^ The transform applied to the results before receiving series.
+                    timingStatsSeries      :: ResultTransform 
+                    -- ^ It defines the series for which the statistics to be collected.
                   }
   
 -- | This is the default view.
@@ -70,28 +66,31 @@ defaultTimingStatsView =
                     timingStatsDescription = "The statistical data are gathered in the time points.",
                     timingStatsWriter      = defaultTimingStatsWriter,
                     timingStatsPredicate   = return True,
-                    timingStatsSeries      = [] }
+                    timingStatsTransform   = id,
+                    timingStatsSeries      = id }
 
-instance ExperimentView TimingStatsView r where  
+instance ExperimentView TimingStatsView WebPageRenderer WebPageWriter where  
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newTimingStats v exp
+             let writer =
+                   WebPageWriter { reporterWriteTOCHtml = timingStatsTOCHtml st,
+                                   reporterWriteHtml    = timingStatsHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTimingStats st,
-                                         reporterTOCHtml    = timingStatsTOCHtml st,
-                                         reporterHtml       = timingStatsHtml st }
+                                         reporterRequest    = const writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TimingStatsViewState r =
+data TimingStatsViewState r a =
   TimingStatsViewState { timingStatsView       :: TimingStatsView,
-                         timingStatsExperiment :: Experiment r,
+                         timingStatsExperiment :: Experiment r a,
                          timingStatsMap        :: M.Map Int (IORef [(String, IORef (TimingStats Double))]) }
   
 -- | Create a new state of the view.
-newTimingStats :: TimingStatsView -> Experiment r -> IO (TimingStatsViewState r)
+newTimingStats :: TimingStatsView -> Experiment r a -> IO (TimingStatsViewState r a)
 newTimingStats view exp =
   do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
@@ -101,40 +100,35 @@ newTimingStats view exp =
                                    timingStatsMap        = m }
        
 -- | Get the timing statistics during the simulation.
-simulateTimingStats :: TimingStatsViewState r -> ExperimentData -> Event (Event ())
+simulateTimingStats :: TimingStatsViewState r a -> ExperimentData -> Event DisposableEvent
 simulateTimingStats st expdata =
-  do let labels = timingStatsSeries $ timingStatsView st
-         input providers =
-           flip map providers $ \provider ->
-           case providerToDouble provider of
-             Nothing -> error $
-                        "Cannot represent series " ++
-                        providerName provider ++ 
-                        " as double values: simulateTimingStats"
-             Just input -> (provider, input)
-         predicate = timingStatsPredicate $ timingStatsView st
+  do let view    = timingStatsView st
+         rs      = timingStatsSeries view $
+                   timingStatsTransform view $
+                   experimentResults expdata
+         exts    = extractDoubleResults rs
+         signals = experimentPredefinedSignals expdata
+         signal  = filterSignalM (const predicate) $
+                   pureResultSignal signals $
+                   resultSignal rs
+         predicate = timingStatsPredicate view
      i <- liftParameter simulationIndex
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
-     forM_ labels $ \label ->
-       do let providers = experimentSeriesProviders expdata [label]
-              pairs     = input providers
-          forM_ pairs $ \(provider, input) ->
-            do stats <- liftIO $ newIORef emptyTimingStats
-               let name = providerName provider
-               liftIO $ modifyIORef r ((:) (name, stats))
-               let h = filterSignalM (const predicate) $
-                       experimentMixedSignal expdata [provider]
-               handleSignal_ h $ \_ ->
-                 do t <- liftDynamics time
-                    x <- input
-                    liftIO $
-                      do y <- readIORef stats
-                         let y' = addTimingStats t x y
-                         y' `seq` writeIORef stats y'
-     return $ return ()
+     ds <- forM exts $ \ext ->
+       do stats <- liftIO $ newIORef emptyTimingStats
+          let name = resultExtractName ext
+          liftIO $ modifyIORef r ((:) (name, stats))
+          handleSignal signal $ \_ ->
+            do t <- liftDynamics time
+               x <- resultExtractData ext
+               liftIO $
+                 do y <- readIORef stats
+                    let y' = addTimingStats t x y
+                    y' `seq` writeIORef stats y'
+     return $ mconcat ds
      
 -- | Get the HTML code.     
-timingStatsHtml :: TimingStatsViewState r -> Int -> HtmlWriter ()     
+timingStatsHtml :: TimingStatsViewState r a -> Int -> HtmlWriter ()     
 timingStatsHtml st index =
   let n = experimentRunCount $ timingStatsExperiment st
   in if n == 1
@@ -142,7 +136,7 @@ timingStatsHtml st index =
      else timingStatsHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-timingStatsHtmlSingle :: TimingStatsViewState r -> Int -> HtmlWriter ()
+timingStatsHtmlSingle :: TimingStatsViewState r a -> Int -> HtmlWriter ()
 timingStatsHtmlSingle st index =
   do header st index
      let r = fromJust $ M.lookup 0 (timingStatsMap st)
@@ -154,7 +148,7 @@ timingStatsHtmlSingle st index =
           write writer name stats
 
 -- | Get the HTML code for multiple runs
-timingStatsHtmlMultiple :: TimingStatsViewState r -> Int -> HtmlWriter ()
+timingStatsHtmlMultiple :: TimingStatsViewState r a -> Int -> HtmlWriter ()
 timingStatsHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ timingStatsExperiment st
@@ -174,7 +168,7 @@ timingStatsHtmlMultiple st index =
                    write  = timingStatsWrite writer
                write writer name stats
 
-header :: TimingStatsViewState r -> Int -> HtmlWriter ()
+header :: TimingStatsViewState r a -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (timingStatsTitle $ timingStatsView st)
@@ -184,7 +178,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-timingStatsTOCHtml :: TimingStatsViewState r -> Int -> HtmlWriter ()
+timingStatsTOCHtml :: TimingStatsViewState r a -> Int -> HtmlWriter ()
 timingStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

@@ -18,10 +18,9 @@ module Simulation.Aivika.Experiment.ExperimentSpecsWriter
        (ExperimentSpecsWriter(..),
         defaultExperimentSpecsWriter) where
 
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
-
-import Simulation.Aivika.Specs
 
 -- | Defines a writer that knows how to represent the
 -- experiment specs as the HTML table.
@@ -48,9 +47,9 @@ data ExperimentSpecsWriter =
                           -- ^ Translated text \"the 4-th order Runge-Kutta\".
                           experimentSpecsFormatter     :: ShowS,
                           -- ^ The formatter of numbers.
-                          experimentSpecsWrite :: forall r.
+                          experimentSpecsWrite :: forall r a.
                                                   ExperimentSpecsWriter
-                                                  -> Experiment r
+                                                  -> Experiment r a
                                                   -> HtmlWriter ()
                           -- ^ This function creates HTML.
                         }

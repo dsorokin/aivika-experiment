@@ -27,21 +27,19 @@ library
 
     exposed-modules: Simulation.Aivika.Experiment
                      Simulation.Aivika.Experiment.Types
-                     Simulation.Aivika.Experiment.FileRenderer
                      Simulation.Aivika.Experiment.HtmlWriter
                      Simulation.Aivika.Experiment.LastValueView
                      Simulation.Aivika.Experiment.TableView
                      Simulation.Aivika.Experiment.TimingStatsView
                      Simulation.Aivika.Experiment.TimingStatsWriter
                      Simulation.Aivika.Experiment.SamplingStatsWriter
-                     Simulation.Aivika.Experiment.SamplingStatsSource
                      Simulation.Aivika.Experiment.FinalStatsView
                      Simulation.Aivika.Experiment.Histogram
                      Simulation.Aivika.Experiment.ExperimentSpecsView
                      Simulation.Aivika.Experiment.ExperimentSpecsWriter
                      Simulation.Aivika.Experiment.FinalTableView
-                     Simulation.Aivika.Experiment.ListSource
                      Simulation.Aivika.Experiment.Utils
+                     Simulation.Aivika.Experiment.MRef
                      
     build-depends:   base >= 3 && < 6,
                      mtl >= 1.1.0.2,
@@ -50,12 +48,13 @@ library
                      filepath >= 1.3.0.0,
                      utf8-string >= 0.3.7,
                      split >= 0.2.2,
-                     network >= 2.3.0.13,
+                     network-uri >= 2.6,
                      parallel-io >= 0.3.2.1,
                      aivika >= 1.4
 
     extensions:      FlexibleInstances,
                      MultiParamTypeClasses,
+                     FunctionalDependencies,
                      RankNTypes
                      
     ghc-options:     -O2

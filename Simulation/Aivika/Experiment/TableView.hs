@@ -7,7 +7,7 @@
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.6.3
+-- Tested with: GHC 7.8.3
 --
 -- The module defines 'TableView' that saves the simulation
 -- results in the CSV file(s).
@@ -23,20 +23,15 @@ import Control.Monad.Trans
 import qualified Data.Map as M
 import Data.IORef
 import Data.Maybe
+import Data.Monoid
 
 import System.IO
 import System.FilePath
 
+import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.FileRenderer
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
-
-import Simulation.Aivika.Specs
-import Simulation.Aivika.Parameter
-import Simulation.Aivika.Simulation
-import Simulation.Aivika.Event
-import Simulation.Aivika.Signal
 
 -- | Defines the 'View' that saves the simulation results
 -- in the CSV file(s).
@@ -97,9 +92,10 @@ data TableView =
               tablePredicate   :: Event Bool,
               -- ^ It specifies the predicate that defines
               -- when we can save data in the table.
-              tableSeries      :: [String] 
-              -- ^ It contains the labels of data saved
-              -- in the CSV file(s).
+              tableTransform   :: ResultTransform,
+              -- ^ The transform applied to the results before receiving series.
+              tableSeries      :: ResultTransform 
+              -- ^ It defines the series to save in the CSV file(s).
             }
   
 -- | The default table view.  
@@ -113,29 +109,32 @@ defaultTableView =
               tableSeparator   = ",",
               tableFormatter   = id,
               tablePredicate   = return True,
-              tableSeries      = [] }
+              tableTransform   = expandResults,
+              tableSeries      = id }
   
-instance FileRenderer r => ExperimentView TableView r where
+instance ExperimentView TableView WebPageRenderer WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newTable v exp dir
+             let writer =
+                   WebPageWriter { reporterWriteTOCHtml = tableTOCHtml st,
+                                   reporterWriteHtml    = tableHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTable st,
-                                         reporterTOCHtml    = tableTOCHtml st,
-                                         reporterHtml       = tableHtml st }
+                                         reporterRequest    = const writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TableViewState r =
+data TableViewState r a =
   TableViewState { tableView       :: TableView,
-                   tableExperiment :: Experiment r,
+                   tableExperiment :: Experiment r a,
                    tableDir        :: FilePath, 
                    tableMap        :: M.Map Int FilePath }
   
 -- | Create a new state of the view.
-newTable :: TableView -> Experiment r -> FilePath -> IO (TableViewState r)
+newTable :: TableView -> Experiment r a -> FilePath -> IO (TableViewState r a)
 newTable view exp dir =
   do let n = experimentRunCount exp
      fs <- forM [0..(n - 1)] $ \i ->
@@ -153,50 +152,50 @@ newTable view exp dir =
                              tableMap          = m }
        
 -- | Write the tables during the simulation.
-simulateTable :: TableViewState r -> ExperimentData -> Event (Event ())
+simulateTable :: TableViewState r a -> ExperimentData -> Event DisposableEvent
 simulateTable st expdata =
-  do let labels = tableSeries $ tableView st
-         providers = experimentSeriesProviders expdata labels
-         input =
-           flip map providers $ \provider ->
-           case providerToString provider of
-             Nothing -> error $
-                        "Cannot represent series " ++
-                        providerName provider ++ 
-                        " as a string: simulateTable"
-             Just input -> input
-         separator = tableSeparator $ tableView st
-         formatter = tableFormatter $ tableView st
-         predicate = tablePredicate $ tableView st
+  do let view    = tableView st
+         rs      = tableSeries view $
+                   tableTransform view $
+                   experimentResults expdata
+         exts    = extractStringResults rs
+         signals = experimentPredefinedSignals expdata
+         signal  = pureResultSignal signals $
+                   resultSignal rs
+         separator = tableSeparator view
+         formatter = tableFormatter view
+         predicate = tablePredicate view
      i <- liftParameter simulationIndex
      -- create a new file
      let f = fromJust $ M.lookup (i - 1) (tableMap st)
      h <- liftIO $ openFile f WriteMode
      -- write a header
      liftIO $
-       do forM_ (zip [0..] providers) $ \(column, provider) ->
+       do forM_ (zip [0..] exts) $ \(column, ext) ->
             do when (column > 0) $ 
                  hPutStr h separator
-               hPutStr h $ show $ providerName provider
+               hPutStr h $ show $ resultExtractName ext
           hPutStrLn h ""
-     handleSignal_ (experimentMixedSignal expdata providers) $ \t ->
+     d1 <- handleSignal signal $ \t ->
        do p <- predicate
           when p $
-            do forM_ (zip [0..] input) $ \(column, input) ->  -- write the row
-                 do x <- input                                -- write the column
+            do forM_ (zip [0..] exts) $ \(column, ext) ->  -- write the row
+                 do x <- resultExtractData ext             -- write the column
                     liftIO $
                       do when (column > 0) $ 
                            hPutStr h separator
                          hPutStr h $ formatter x
                liftIO $ hPutStrLn h ""
-     return $ 
-       liftIO $
-       do when (experimentVerbose $ tableExperiment st) $
-            putStr "Generated file " >> putStrLn f
-          hClose h  -- close the file
+     let d2 =          
+           DisposableEvent $
+           liftIO $
+           do when (experimentVerbose $ tableExperiment st) $
+                putStr "Generated file " >> putStrLn f
+              hClose h  -- close the file
+     return $ d1 <> d2
      
 -- | Get the HTML code.     
-tableHtml :: TableViewState r -> Int -> HtmlWriter ()     
+tableHtml :: TableViewState r a -> Int -> HtmlWriter ()     
 tableHtml st index =
   let n = experimentRunCount $ tableExperiment st
   in if n == 1
@@ -204,7 +203,7 @@ tableHtml st index =
      else tableHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-tableHtmlSingle :: TableViewState r -> Int -> HtmlWriter ()
+tableHtmlSingle :: TableViewState r a -> Int -> HtmlWriter ()
 tableHtmlSingle st index =
   do header st index
      let f = fromJust $ M.lookup 0 (tableMap st)
@@ -213,7 +212,7 @@ tableHtmlSingle st index =
        writeHtmlText (tableLinkText $ tableView st)
 
 -- | Get the HTML code for multiple runs
-tableHtmlMultiple :: TableViewState r -> Int -> HtmlWriter ()
+tableHtmlMultiple :: TableViewState r a -> Int -> HtmlWriter ()
 tableHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ tableExperiment st
@@ -228,7 +227,7 @@ tableHtmlMultiple st index =
             writeHtmlLink (makeRelative (tableDir st) f) $
             writeHtmlText sublink
 
-header :: TableViewState r -> Int -> HtmlWriter ()
+header :: TableViewState r a -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (tableTitle $ tableView st)
@@ -238,7 +237,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-tableTOCHtml :: TableViewState r -> Int -> HtmlWriter ()
+tableTOCHtml :: TableViewState r a -> Int -> HtmlWriter ()
 tableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

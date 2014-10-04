@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
@@ -7,7 +7,7 @@
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.6.3
+-- Tested with: GHC 7.8.3
 --
 -- The module defines the simulation experiments. They automate
 -- the process of generating and analyzing the results. Moreover,
@@ -20,7 +20,9 @@
 --
 
 module Simulation.Aivika.Experiment.Types
-       (Experiment(..),
+       (-- * General Definitions
+        Experiment(..),
+        ExperimentRenderer(..),
         defaultExperiment,
         runExperiment,
         runExperimentParallel,
@@ -31,7 +33,10 @@ module Simulation.Aivika.Experiment.Types
         ExperimentFilePath(..),
         resolveFilePath,
         expandFilePath,
-        mapFilePath) where
+        mapFilePath,
+        -- * Web Page Rendering
+        WebPageRenderer(..),
+        WebPageWriter(..)) where
 
 import Control.Monad
 import Control.Monad.State
@@ -53,11 +58,11 @@ import Simulation.Aivika
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
--- | It defines the simulation experiment with the specified rendering backend.
-data Experiment r = 
+-- | It defines the simulation experiment with the specified rendering backend and its bound data.
+data Experiment r a = 
   Experiment { experimentSpecs         :: Specs,
                -- ^ The simulation specs for the experiment.
-               experimentResultTransform :: ResultTransform,
+               experimentTransform     :: ResultTransform,
                -- ^ How the results must be transformed before rendering.
                experimentRunCount      :: Int,
                -- ^ How many simulation runs should be launched.
@@ -69,45 +74,46 @@ data Experiment r =
                -- ^ The experiment description.
                experimentVerbose       :: Bool,
                -- ^ Whether the process of generating the results is verbose.
-               experimentGenerators    :: [ExperimentGenerator r], 
+               experimentGenerators    :: [ExperimentGenerator r a], 
                -- ^ The experiment generators.
-               experimentIndexHtml     :: Experiment r -> [ExperimentReporter] -> FilePath -> IO (),
-               -- ^ Create the @index.html@ file after the simulation is finished
-               -- in the specified directory.
                experimentNumCapabilities :: IO Int
                -- ^ The number of threads used for the Monte-Carlo simulation
                -- if the executable was compiled with the support of multi-threading.
              }
 
 -- | The default experiment.
-defaultExperiment :: Experiment r
+defaultExperiment :: Experiment r a
 defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 SimpleGenerator,
-               experimentResultTransform = id,
+               experimentTransform     = id,
                experimentRunCount      = 1,
                experimentDirectoryName = UniqueFilePath "experiment",
                experimentTitle         = "Simulation Experiment",
                experimentDescription   = "",
                experimentVerbose       = True,
                experimentGenerators    = [], 
-               experimentIndexHtml     = createIndexHtml,
                experimentNumCapabilities = getNumCapabilities }
 
+-- | It allows rendering the simulation results in an arbitrary way.
+class ExperimentRenderer r a | r -> a where
+
+  -- | Render the experiment after the simulation is finished, for example,
+  -- creating the @index.html@ file in the specified directory.
+  renderExperiment :: Experiment r a -> r -> [ExperimentReporter r a] -> FilePath -> IO ()
+
 -- | This is a generator of the reporter with the specified rendering backend.                     
-data ExperimentGenerator r = 
-  ExperimentGenerator { generateReporter :: Experiment r -> r -> FilePath -> IO ExperimentReporter 
-                        -- ^ Generate a reporter for the specified directory,
-                        -- where the @index.html@ file will be saved for the 
-                        -- current simulation experiment.
+data ExperimentGenerator r a = 
+  ExperimentGenerator { generateReporter :: Experiment r a -> r -> FilePath -> IO (ExperimentReporter r a)
+                        -- ^ Generate a reporter bound up with the specified directory.
                       }
 
 -- | Defines a view in which the simulation results should be saved.
 -- You should extend this type class to define your own views such
 -- as the PDF document.
-class ExperimentView v r where
+class ExperimentRenderer r a => ExperimentView v r a | r -> a where
   
   -- | Create a generator of the reporter.
-  outputView :: v -> ExperimentGenerator r
+  outputView :: v -> ExperimentGenerator r a
 
 -- | It describes the source simulation data used in the experiment.
 data ExperimentData =
@@ -117,38 +123,28 @@ data ExperimentData =
                    -- ^ The predefined signals provided by every model.
                  }
 
--- | Defines what creates the simulation reports.
-data ExperimentReporter =
+-- | Defines what creates the simulation reports by the specified renderer.
+data ExperimentReporter r a =
   ExperimentReporter { reporterInitialise :: IO (),
                        -- ^ Initialise the reporting before 
                        -- the simulation runs are started.
                        reporterFinalise   :: IO (),
                        -- ^ Finalise the reporting after
                        -- all simulation runs are finished.
-                       reporterSimulate   :: ExperimentData -> Event (Event ()),
+                       reporterSimulate   :: ExperimentData -> Event DisposableEvent,
                        -- ^ Start the simulation run in the start time
                        -- and return a finalizer that will be called 
                        -- in the stop time after the last signal is 
                        -- triggered and processed.
-                       reporterTOCHtml :: Int -> HtmlWriter (),
-                       -- ^ Return a TOC (Table of Contents) item for 
-                       -- the HTML index file after the finalisation 
-                       -- function is called, i.e. in the very end. 
-                       -- The agument specifies the ordered number of 
-                       -- the item.
-                       --
-                       -- You should wrap your HTML in 'writeHtmlListItem'.
-                       reporterHtml :: Int -> HtmlWriter ()
-                       -- ^ Return an HTML code for the index file
-                       -- after the finalisation function is called,
-                       -- i.e. in the very end. The agument specifies
-                       -- the ordered number of the item.
+                       reporterRequest :: r -> a
+                       -- ^ Return data requested by the renderer.
                      }
 
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: Experiment r
+runExperiment :: ExperimentRenderer r a
+                 => Experiment r a
                  -- ^ the simulation experiment to run
                  -> r
                  -- ^ the rendering backend
@@ -169,7 +165,8 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: Experiment r
+runExperimentParallel :: ExperimentRenderer r a
+                         => Experiment r a
                          -- ^ the simulation experiment to run
                          -> r
                          -- ^ the rendering backend
@@ -183,9 +180,10 @@ runExperimentParallel e = runExperimentWithExecutor executor e
                parallel_ pool tasks
                         
 -- | Run the simulation experiment with the specified executor.
-runExperimentWithExecutor :: ([IO ()] -> IO ())
+runExperimentWithExecutor :: ExperimentRenderer r a 
+                             => ([IO ()] -> IO ())
                              -- ^ an executor that allows parallelizing the simulation if required
-                             -> Experiment r
+                             -> Experiment r a
                              -- ^ the simulation experiment to run
                              -> r
                              -- ^ the rendering backend
@@ -209,41 +207,61 @@ runExperimentWithExecutor executor e r simulation =
          simulate =
            do signals <- newResultPredefinedSignals
               results <- simulation
-              let d = ExperimentData { experimentResults = results,
+              let d = ExperimentData { experimentResults = experimentTransform e results,
                                        experimentPredefinedSignals = signals }
               fs <- runDynamicsInStartTime $
                     runEventWith EarlierEvents $
                     forM reporters $ \reporter ->
                     reporterSimulate reporter d
               runEventInStopTime $
-                sequence_ fs
+                disposeEvent $ mconcat fs
      executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
-     experimentIndexHtml e e reporters path
+     renderExperiment e r reporters path
      return ()
-     
--- | Create an index HTML file.     
-createIndexHtml :: Experiment r -> [ExperimentReporter] -> FilePath -> IO ()
-createIndexHtml e reporters path = 
-  do let html :: HtmlWriter ()
-         html = 
-           writeHtmlDocumentWithTitle (experimentTitle e) $
+
+-- | It defines the web page renderer for simulation 'Experiment'. 
+data WebPageRenderer = WebPageRenderer
+
+-- | It replies to the requests made by the web page renderer.
+data WebPageWriter =
+  WebPageWriter { reporterWriteTOCHtml :: Int -> HtmlWriter (),
+                  -- ^ Return a TOC (Table of Contents) item for 
+                  -- the HTML index file after the finalisation 
+                  -- function is called, i.e. in the very end. 
+                  -- The agument specifies the ordered number of 
+                  -- the item.
+                  --
+                  -- You should wrap your HTML in 'writeHtmlListItem'.
+                  reporterWriteHtml :: Int -> HtmlWriter ()
+                  -- ^ Return an HTML code for the index file
+                  -- after the finalisation function is called,
+                  -- i.e. in the very end. The agument specifies
+                  -- the ordered number of the item.
+                }
+
+instance ExperimentRenderer WebPageRenderer WebPageWriter where
+
+  renderExperiment e r reporters path = 
+    do let html :: HtmlWriter ()
+           html = 
+             writeHtmlDocumentWithTitle (experimentTitle e) $
              do writeHtmlList $
                   forM_ (zip [1..] reporters) $ \(i, reporter) -> 
-                  reporterTOCHtml reporter i
+                  reporterWriteTOCHtml (reporterRequest reporter r) i
                 writeHtmlBreak
                 unless (null $ experimentDescription e) $
                   writeHtmlParagraph $
                   writeHtmlText $ experimentDescription e
                 forM_ (zip [1..] reporters) $ \(i, reporter) ->
-                  reporterHtml reporter i
-         file = combine path "index.html"
-     ((), contents) <- runHtmlWriter html id
-     UTF8.writeFile file (contents [])
-     when (experimentVerbose e) $
-       do putStr "Generated file "
-          putStrLn file
-
+                  reporterWriteHtml (reporterRequest reporter r) i
+           file = combine path "index.html"
+       ((), contents) <- runHtmlWriter html id
+       UTF8.writeFile file (contents [])
+       when (experimentVerbose e) $
+         do putStr "Generated file "
+            putStrLn file
+  
 -- | Specifies the file name, unique or writable, which can be appended with extension if required.
 data ExperimentFilePath = WritableFilePath FilePath
                           -- ^ The file which is overwritten in 
