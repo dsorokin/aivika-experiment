@@ -9,6 +9,8 @@
 {-# LANGUAGE RecursiveDo #-}
 
 import Data.Array
+import Data.Monoid
+
 import Control.Monad
 import Control.Monad.Trans
 
@@ -32,7 +34,7 @@ generateArray bnds generator =
           return (i, x)
      return $ array bnds ps
 
-model :: Int -> Simulation ExperimentData
+model :: Int -> Simulation Results
 model n =
   mdo m <- generateArray (1, n) $ \i ->
         integ (q + k * (c!(i - 1) - c!i) + k * (c!(i + 1) - c!i)) 0
@@ -43,12 +45,12 @@ model n =
           q = 1
           k = 2
           v = 0.75
-      experimentDataInStartTime
-        [("t", seriesEntity "time" time),
-         ("m", seriesEntity "M" m),
-         ("c", seriesEntity "C" c)]
+      return $ results
+        [resultSource "t" "time" time,
+         resultSource "m" "M" m,
+         resultSource "c" "C" c]
 
-experiment :: FileRenderer r => Experiment r
+experiment :: WebPageRendering r => Experiment r WebPageWriter
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
@@ -59,14 +61,27 @@ experiment =
     experimentGenerators = 
       [outputView defaultExperimentSpecsView,
        outputView $ defaultTableView {
-         tableSeries = ["t", "m", "c"] },
+         tableSeries =
+            resultByName "t" <>
+            resultByName "m" <>
+            resultByName "c" },
        outputView $ defaultFinalTableView {
-         finalTableSeries = ["m", "c"] }, 
+         finalTableSeries =
+            resultByName "m" <>
+            resultByName "c" },
        outputView $ defaultLastValueView {
-         lastValueSeries = ["t", "m", "c"] },
+         lastValueSeries =
+            resultByName "t" <>
+            resultByName "m" <>
+            resultByName "c" },
        outputView $ defaultTimingStatsView {
-         timingStatsSeries = ["t", "m", "c"] },
+         timingStatsSeries =
+            resultByName "t" <>
+            resultByName "m" <>
+            resultByName "c" },
        outputView $ defaultFinalStatsView {
-         finalStatsSeries = ["m", "c"] } ] } 
+         finalStatsSeries =
+            resultByName "m" <>
+            resultByName "c" } ] }
 
-main = runExperiment experiment HtmlRenderer (model 51)
+main = runExperiment experiment WebPageRenderer (model 51)

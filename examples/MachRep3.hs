@@ -36,7 +36,7 @@ description =
   "until both machines are down. We find the proportion of up time. It " ++
   "should come out to about 0.45."
 
-experiment :: FileRenderer r => Experiment r
+experiment :: WebPageRendering r => Experiment r WebPageWriter
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
@@ -45,17 +45,17 @@ experiment =
     experimentGenerators =
       [outputView defaultExperimentSpecsView,
        outputView $ defaultLastValueView {
-         lastValueSeries = ["x"] },
+         lastValueSeries = resultByName "x" },
        outputView $ defaultTimingStatsView {
-         timingStatsSeries = ["x"] },
+         timingStatsSeries = resultByName "x" },
        outputView $ defaultFinalStatsView {
-         finalStatsSeries = ["x"] },
+         finalStatsSeries = resultByName "x" },
        outputView $ defaultTableView {
-         tableSeries = ["x"] }, 
+         tableSeries = resultByName "x" }, 
        outputView $ defaultFinalTableView {
-         finalTableSeries = ["x"] } ] }
+         finalTableSeries = resultByName "x" } ] }
 
-model :: Simulation ExperimentData
+model :: Simulation Results
 model =
   do -- number of machines currently up
      nUp <- newRef 2
@@ -104,13 +104,13 @@ model =
      runProcessInStartTimeUsingId
        pid2 (machine pid1)
      
-     let result = 
+     let prop = 
            do x <- readRef totalUpTime
               y <- liftDynamics time
               return $ x / (2 * y)          
               
-     experimentDataInStartTime
-       [("x", seriesEntity "The proportion of up time" result),
-        ("t", seriesEntity "Simulation time" time)]
+     return $ results
+       [resultSource "x" "The proportion of up time" prop,
+        resultSource "t" "Simulation time" time]
 
-main = runExperiment experiment HtmlRenderer model
+main = runExperiment experiment WebPageRenderer model
