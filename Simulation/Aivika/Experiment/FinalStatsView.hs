@@ -58,7 +58,7 @@ defaultFinalStatsView =
                    finalStatsTransform   = id,
                    finalStatsSeries      = id }
 
-instance ExperimentView FinalStatsView WebPageRenderer WebPageWriter where
+instance WebPageRendering r => ExperimentView FinalStatsView r WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =

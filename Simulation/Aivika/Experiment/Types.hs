@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes, FlexibleContexts #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
@@ -22,7 +22,7 @@
 module Simulation.Aivika.Experiment.Types
        (-- * General Definitions
         Experiment(..),
-        ExperimentRenderer(..),
+        ExperimentRendering(..),
         defaultExperiment,
         runExperiment,
         runExperimentParallel,
@@ -35,6 +35,7 @@ module Simulation.Aivika.Experiment.Types
         expandFilePath,
         mapFilePath,
         -- * Web Page Rendering
+        WebPageRendering(..),
         WebPageRenderer(..),
         WebPageWriter(..)) where
 
@@ -95,7 +96,7 @@ defaultExperiment =
                experimentNumCapabilities = getNumCapabilities }
 
 -- | It allows rendering the simulation results in an arbitrary way.
-class ExperimentRenderer r a | r -> a where
+class ExperimentRendering r a | r -> a where
 
   -- | Render the experiment after the simulation is finished, for example,
   -- creating the @index.html@ file in the specified directory.
@@ -110,7 +111,7 @@ data ExperimentGenerator r a =
 -- | Defines a view in which the simulation results should be saved.
 -- You should extend this type class to define your own views such
 -- as the PDF document.
-class ExperimentRenderer r a => ExperimentView v r a | r -> a where
+class ExperimentRendering r a => ExperimentView v r a | r -> a where
   
   -- | Create a generator of the reporter.
   outputView :: v -> ExperimentGenerator r a
@@ -143,7 +144,7 @@ data ExperimentReporter r a =
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: ExperimentRenderer r a
+runExperiment :: ExperimentRendering r a
                  => Experiment r a
                  -- ^ the simulation experiment to run
                  -> r
@@ -165,7 +166,7 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: ExperimentRenderer r a
+runExperimentParallel :: ExperimentRendering r a
                          => Experiment r a
                          -- ^ the simulation experiment to run
                          -> r
@@ -180,7 +181,7 @@ runExperimentParallel e = runExperimentWithExecutor executor e
                parallel_ pool tasks
                         
 -- | Run the simulation experiment with the specified executor.
-runExperimentWithExecutor :: ExperimentRenderer r a 
+runExperimentWithExecutor :: ExperimentRendering r a 
                              => ([IO ()] -> IO ())
                              -- ^ an executor that allows parallelizing the simulation if required
                              -> Experiment r a
@@ -240,7 +241,13 @@ data WebPageWriter =
                   -- the ordered number of the item.
                 }
 
-instance ExperimentRenderer WebPageRenderer WebPageWriter where
+-- | A subclass of renderers that know how to save the @index.html@ file
+-- when rendering the simulation experiment.
+class ExperimentRendering r WebPageWriter => WebPageRendering r
+
+instance WebPageRendering WebPageRenderer
+
+instance ExperimentRendering WebPageRenderer WebPageWriter where
 
   renderExperiment e r reporters path = 
     do let html :: HtmlWriter ()

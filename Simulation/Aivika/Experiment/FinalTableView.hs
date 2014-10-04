@@ -94,7 +94,7 @@ defaultFinalTableView =
                    finalTableTransform   = expandResults,
                    finalTableSeries      = id }
 
-instance ExperimentView FinalTableView WebPageRenderer WebPageWriter where
+instance WebPageRendering r => ExperimentView FinalTableView r WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =

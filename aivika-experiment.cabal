@@ -53,6 +53,7 @@ library
                      aivika >= 1.4
 
     extensions:      FlexibleInstances,
+                     FlexibleContexts,
                      MultiParamTypeClasses,
                      FunctionalDependencies,
                      RankNTypes

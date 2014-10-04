@@ -69,7 +69,7 @@ defaultTimingStatsView =
                     timingStatsTransform   = id,
                     timingStatsSeries      = id }
 
-instance ExperimentView TimingStatsView WebPageRenderer WebPageWriter where  
+instance WebPageRendering r => ExperimentView TimingStatsView r WebPageWriter where  
   
   outputView v = 
     let reporter exp renderer dir =

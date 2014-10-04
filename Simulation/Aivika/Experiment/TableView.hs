@@ -112,7 +112,7 @@ defaultTableView =
               tableTransform   = expandResults,
               tableSeries      = id }
   
-instance ExperimentView TableView WebPageRenderer WebPageWriter where
+instance WebPageRendering r => ExperimentView TableView r WebPageWriter where
   
   outputView v = 
     let reporter exp renderer dir =

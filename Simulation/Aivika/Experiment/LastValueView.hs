@@ -64,7 +64,7 @@ defaultLastValueView =
                   lastValueTransform   = id,
                   lastValueSeries      = id }
   
-instance ExperimentView LastValueView WebPageRenderer WebPageWriter where  
+instance WebPageRendering r => ExperimentView LastValueView r WebPageWriter where  
   
   outputView v = 
     let reporter exp renderer dir =

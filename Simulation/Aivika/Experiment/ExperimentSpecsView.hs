@@ -43,7 +43,7 @@ defaultExperimentSpecsView =
                         experimentSpecsDescription = "It shows the experiment specs.",
                         experimentSpecsWriter      = defaultExperimentSpecsWriter }
 
-instance ExperimentView ExperimentSpecsView WebPageRenderer WebPageWriter where  
+instance WebPageRendering r => ExperimentView ExperimentSpecsView r WebPageWriter where  
   
   outputView v = 
     let reporter exp renderer dir =
