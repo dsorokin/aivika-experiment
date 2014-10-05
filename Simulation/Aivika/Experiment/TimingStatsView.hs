@@ -84,13 +84,13 @@ instance WebPageRendering r => ExperimentView TimingStatsView r WebPageWriter wh
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TimingStatsViewState r a =
+data TimingStatsViewState =
   TimingStatsViewState { timingStatsView       :: TimingStatsView,
-                         timingStatsExperiment :: Experiment r a,
+                         timingStatsExperiment :: Experiment,
                          timingStatsMap        :: M.Map Int (IORef [(String, IORef (TimingStats Double))]) }
   
 -- | Create a new state of the view.
-newTimingStats :: TimingStatsView -> Experiment r a -> IO (TimingStatsViewState r a)
+newTimingStats :: TimingStatsView -> Experiment -> IO TimingStatsViewState
 newTimingStats view exp =
   do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
@@ -100,7 +100,7 @@ newTimingStats view exp =
                                    timingStatsMap        = m }
        
 -- | Get the timing statistics during the simulation.
-simulateTimingStats :: TimingStatsViewState r a -> ExperimentData -> Event DisposableEvent
+simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Event DisposableEvent
 simulateTimingStats st expdata =
   do let view    = timingStatsView st
          rs      = timingStatsSeries view $
@@ -128,7 +128,7 @@ simulateTimingStats st expdata =
      return $ mconcat ds
      
 -- | Get the HTML code.     
-timingStatsHtml :: TimingStatsViewState r a -> Int -> HtmlWriter ()     
+timingStatsHtml :: TimingStatsViewState -> Int -> HtmlWriter ()     
 timingStatsHtml st index =
   let n = experimentRunCount $ timingStatsExperiment st
   in if n == 1
@@ -136,7 +136,7 @@ timingStatsHtml st index =
      else timingStatsHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-timingStatsHtmlSingle :: TimingStatsViewState r a -> Int -> HtmlWriter ()
+timingStatsHtmlSingle :: TimingStatsViewState -> Int -> HtmlWriter ()
 timingStatsHtmlSingle st index =
   do header st index
      let r = fromJust $ M.lookup 0 (timingStatsMap st)
@@ -148,7 +148,7 @@ timingStatsHtmlSingle st index =
           write writer name stats
 
 -- | Get the HTML code for multiple runs
-timingStatsHtmlMultiple :: TimingStatsViewState r a -> Int -> HtmlWriter ()
+timingStatsHtmlMultiple :: TimingStatsViewState -> Int -> HtmlWriter ()
 timingStatsHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ timingStatsExperiment st
@@ -168,7 +168,7 @@ timingStatsHtmlMultiple st index =
                    write  = timingStatsWrite writer
                write writer name stats
 
-header :: TimingStatsViewState r a -> Int -> HtmlWriter ()
+header :: TimingStatsViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (timingStatsTitle $ timingStatsView st)
@@ -178,7 +178,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-timingStatsTOCHtml :: TimingStatsViewState r a -> Int -> HtmlWriter ()
+timingStatsTOCHtml :: TimingStatsViewState -> Int -> HtmlWriter ()
 timingStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

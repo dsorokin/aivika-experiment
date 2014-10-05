@@ -109,9 +109,9 @@ instance WebPageRendering r => ExperimentView FinalTableView r WebPageWriter whe
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalTableViewState r a =
+data FinalTableViewState =
   FinalTableViewState { finalTableView       :: FinalTableView,
-                        finalTableExperiment :: Experiment r a,
+                        finalTableExperiment :: Experiment,
                         finalTableDir        :: FilePath, 
                         finalTableFile       :: IORef (Maybe FilePath),
                         finalTableResults    :: MRef (Maybe FinalTableResults) }
@@ -122,7 +122,7 @@ data FinalTableResults =
                       finalTableValues :: MRef (M.Map Int [String]) }
   
 -- | Create a new state of the view.
-newFinalTable :: FinalTableView -> Experiment r a -> FilePath -> IO (FinalTableViewState r a)
+newFinalTable :: FinalTableView -> Experiment -> FilePath -> IO FinalTableViewState
 newFinalTable view exp dir =
   do f <- newIORef Nothing
      r <- newMRef Nothing
@@ -133,14 +133,14 @@ newFinalTable view exp dir =
                                   finalTableResults    = r }
        
 -- | Create new table results.
-newFinalTableResults :: [String] -> Experiment r a -> IO FinalTableResults
+newFinalTableResults :: [String] -> Experiment -> IO FinalTableResults
 newFinalTableResults names exp =
   do values <- newMRef M.empty 
      return FinalTableResults { finalTableNames  = names,
                                 finalTableValues = values }
 
 -- | Require to return unique final tables results associated with the specified state. 
-requireFinalTableResults :: FinalTableViewState r a -> [String] -> IO FinalTableResults
+requireFinalTableResults :: FinalTableViewState -> [String] -> IO FinalTableResults
 requireFinalTableResults st names =
   maybeWriteMRef (finalTableResults st)
   (newFinalTableResults names (finalTableExperiment st)) $ \results ->
@@ -149,7 +149,7 @@ requireFinalTableResults st names =
   else results
        
 -- | Simulation of the specified series.
-simulateFinalTable :: FinalTableViewState r a -> ExperimentData -> Event DisposableEvent
+simulateFinalTable :: FinalTableViewState -> ExperimentData -> Event DisposableEvent
 simulateFinalTable st expdata =
   do let view    = finalTableView st
          rs      = finalTableSeries view $
@@ -169,7 +169,7 @@ simulateFinalTable st expdata =
           liftIO $ modifyMRef values $ M.insert i xs
      
 -- | Save the results in the CSV file after the simulation is complete.
-finaliseFinalTable :: FinalTableViewState r a -> IO ()
+finaliseFinalTable :: FinalTableViewState -> IO ()
 finaliseFinalTable st =
   do let view      = finalTableView st
          run       = finalTableRunText view
@@ -209,7 +209,7 @@ finaliseFinalTable st =
             writeIORef (finalTableFile st) $ Just file
      
 -- | Get the HTML code.     
-finalTableHtml :: FinalTableViewState r a -> Int -> HtmlWriter ()
+finalTableHtml :: FinalTableViewState -> Int -> HtmlWriter ()
 finalTableHtml st index =
   do header st index
      file <- liftIO $ readIORef (finalTableFile st)
@@ -220,7 +220,7 @@ finalTableHtml st index =
          writeHtmlLink (makeRelative (finalTableDir st) f) $
          writeHtmlText (finalTableLinkText $ finalTableView st)
 
-header :: FinalTableViewState r a -> Int -> HtmlWriter ()
+header :: FinalTableViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalTableTitle $ finalTableView st)
@@ -230,7 +230,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalTableTOCHtml :: FinalTableViewState r a -> Int -> HtmlWriter ()
+finalTableTOCHtml :: FinalTableViewState -> Int -> HtmlWriter ()
 finalTableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

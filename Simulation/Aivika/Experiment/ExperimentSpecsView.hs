@@ -58,18 +58,18 @@ instance WebPageRendering r => ExperimentView ExperimentSpecsView r WebPageWrite
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data ExperimentSpecsViewState r a =
+data ExperimentSpecsViewState =
   ExperimentSpecsViewState { experimentSpecsView       :: ExperimentSpecsView,
-                             experimentSpecsExperiment :: Experiment r a }
+                             experimentSpecsExperiment :: Experiment }
   
 -- | Create a new state of the view.
-newExperimentSpecs :: ExperimentSpecsView -> Experiment r a -> IO (ExperimentSpecsViewState r a)
+newExperimentSpecs :: ExperimentSpecsView -> Experiment -> IO ExperimentSpecsViewState
 newExperimentSpecs view exp =
   return ExperimentSpecsViewState { experimentSpecsView       = view,
                                     experimentSpecsExperiment = exp }
        
 -- | Get the HTML code.     
-experimentSpecsHtml :: ExperimentSpecsViewState r a -> Int -> HtmlWriter ()     
+experimentSpecsHtml :: ExperimentSpecsViewState -> Int -> HtmlWriter ()     
 experimentSpecsHtml st index =
   do header st index
      let writer = experimentSpecsWriter (experimentSpecsView st)
@@ -77,7 +77,7 @@ experimentSpecsHtml st index =
          exp    = experimentSpecsExperiment st
      write writer exp
 
-header :: ExperimentSpecsViewState r a -> Int -> HtmlWriter ()
+header :: ExperimentSpecsViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (experimentSpecsTitle $ experimentSpecsView st)
@@ -87,7 +87,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-experimentSpecsTOCHtml :: ExperimentSpecsViewState r a -> Int -> HtmlWriter ()
+experimentSpecsTOCHtml :: ExperimentSpecsViewState -> Int -> HtmlWriter ()
 experimentSpecsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

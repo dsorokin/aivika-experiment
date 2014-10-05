@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, RankNTypes, FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
@@ -60,7 +60,7 @@ import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 -- | It defines the simulation experiment with the specified rendering backend and its bound data.
-data Experiment r a = 
+data Experiment = 
   Experiment { experimentSpecs         :: Specs,
                -- ^ The simulation specs for the experiment.
                experimentTransform     :: ResultTransform,
@@ -75,15 +75,13 @@ data Experiment r a =
                -- ^ The experiment description.
                experimentVerbose       :: Bool,
                -- ^ Whether the process of generating the results is verbose.
-               experimentGenerators    :: [ExperimentGenerator r a], 
-               -- ^ The experiment generators.
                experimentNumCapabilities :: IO Int
                -- ^ The number of threads used for the Monte-Carlo simulation
                -- if the executable was compiled with the support of multi-threading.
              }
 
 -- | The default experiment.
-defaultExperiment :: Experiment r a
+defaultExperiment :: Experiment
 defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 SimpleGenerator,
                experimentTransform     = id,
@@ -92,7 +90,6 @@ defaultExperiment =
                experimentTitle         = "Simulation Experiment",
                experimentDescription   = "",
                experimentVerbose       = True,
-               experimentGenerators    = [], 
                experimentNumCapabilities = getNumCapabilities }
 
 -- | It allows rendering the simulation results in an arbitrary way.
@@ -100,11 +97,11 @@ class ExperimentRendering r a | r -> a where
 
   -- | Render the experiment after the simulation is finished, for example,
   -- creating the @index.html@ file in the specified directory.
-  renderExperiment :: Experiment r a -> r -> [ExperimentReporter r a] -> FilePath -> IO ()
+  renderExperiment :: Experiment -> r -> [ExperimentReporter a] -> FilePath -> IO ()
 
 -- | This is a generator of the reporter with the specified rendering backend.                     
 data ExperimentGenerator r a = 
-  ExperimentGenerator { generateReporter :: Experiment r a -> r -> FilePath -> IO (ExperimentReporter r a)
+  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> IO (ExperimentReporter a)
                         -- ^ Generate a reporter bound up with the specified directory.
                       }
 
@@ -125,7 +122,7 @@ data ExperimentData =
                  }
 
 -- | Defines what creates the simulation reports by the specified renderer.
-data ExperimentReporter r a =
+data ExperimentReporter a =
   ExperimentReporter { reporterInitialise :: IO (),
                        -- ^ Initialise the reporting before 
                        -- the simulation runs are started.
@@ -145,8 +142,10 @@ data ExperimentReporter r a =
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
 runExperiment :: ExperimentRendering r a
-                 => Experiment r a
+                 => Experiment
                  -- ^ the simulation experiment to run
+                 -> [ExperimentGenerator r a]
+                 -- ^ generators used for rendering
                  -> r
                  -- ^ the rendering backend
                  -> Simulation Results
@@ -167,8 +166,10 @@ runExperiment = runExperimentWithExecutor sequence_
 -- although the real number of parallel threads can depend on many
 -- factors.
 runExperimentParallel :: ExperimentRendering r a
-                         => Experiment r a
+                         => Experiment
                          -- ^ the simulation experiment to run
+                         -> [ExperimentGenerator r a]
+                         -- ^ generators used for rendering
                          -> r
                          -- ^ the rendering backend
                          -> Simulation Results
@@ -184,18 +185,19 @@ runExperimentParallel e = runExperimentWithExecutor executor e
 runExperimentWithExecutor :: ExperimentRendering r a 
                              => ([IO ()] -> IO ())
                              -- ^ an executor that allows parallelizing the simulation if required
-                             -> Experiment r a
+                             -> Experiment
                              -- ^ the simulation experiment to run
+                             -> [ExperimentGenerator r a]
+                             -- ^ generators used for rendering
                              -> r
                              -- ^ the rendering backend
                              -> Simulation Results
                              -- ^ the simulation results received from the model
                              -> IO ()
-runExperimentWithExecutor executor e r simulation = 
+runExperimentWithExecutor executor e generators r simulation = 
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
          dirName    = experimentDirectoryName e
-         generators = experimentGenerators e
      path <- resolveFilePath "" dirName
      when (experimentVerbose e) $
        do putStr "Updating directory " 

@@ -127,14 +127,14 @@ instance WebPageRendering r => ExperimentView TableView r WebPageWriter where
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data TableViewState r a =
+data TableViewState =
   TableViewState { tableView       :: TableView,
-                   tableExperiment :: Experiment r a,
+                   tableExperiment :: Experiment,
                    tableDir        :: FilePath, 
                    tableMap        :: M.Map Int FilePath }
   
 -- | Create a new state of the view.
-newTable :: TableView -> Experiment r a -> FilePath -> IO (TableViewState r a)
+newTable :: TableView -> Experiment -> FilePath -> IO TableViewState
 newTable view exp dir =
   do let n = experimentRunCount exp
      fs <- forM [0..(n - 1)] $ \i ->
@@ -152,7 +152,7 @@ newTable view exp dir =
                              tableMap          = m }
        
 -- | Write the tables during the simulation.
-simulateTable :: TableViewState r a -> ExperimentData -> Event DisposableEvent
+simulateTable :: TableViewState -> ExperimentData -> Event DisposableEvent
 simulateTable st expdata =
   do let view    = tableView st
          rs      = tableSeries view $
@@ -195,7 +195,7 @@ simulateTable st expdata =
      return $ d1 <> d2
      
 -- | Get the HTML code.     
-tableHtml :: TableViewState r a -> Int -> HtmlWriter ()     
+tableHtml :: TableViewState -> Int -> HtmlWriter ()     
 tableHtml st index =
   let n = experimentRunCount $ tableExperiment st
   in if n == 1
@@ -203,7 +203,7 @@ tableHtml st index =
      else tableHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-tableHtmlSingle :: TableViewState r a -> Int -> HtmlWriter ()
+tableHtmlSingle :: TableViewState -> Int -> HtmlWriter ()
 tableHtmlSingle st index =
   do header st index
      let f = fromJust $ M.lookup 0 (tableMap st)
@@ -212,7 +212,7 @@ tableHtmlSingle st index =
        writeHtmlText (tableLinkText $ tableView st)
 
 -- | Get the HTML code for multiple runs
-tableHtmlMultiple :: TableViewState r a -> Int -> HtmlWriter ()
+tableHtmlMultiple :: TableViewState -> Int -> HtmlWriter ()
 tableHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ tableExperiment st
@@ -227,7 +227,7 @@ tableHtmlMultiple st index =
             writeHtmlLink (makeRelative (tableDir st) f) $
             writeHtmlText sublink
 
-header :: TableViewState r a -> Int -> HtmlWriter ()
+header :: TableViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (tableTitle $ tableView st)
@@ -237,7 +237,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item     
-tableTOCHtml :: TableViewState r a -> Int -> HtmlWriter ()
+tableTOCHtml :: TableViewState -> Int -> HtmlWriter ()
 tableTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

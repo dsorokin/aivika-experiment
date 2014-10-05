@@ -1,6 +1,4 @@
 
-{-# LANGUAGE RankNTypes #-}
-
 -- |
 -- Module     : Simulation.Aivika.Experiment.ExperimentSpecsWriter
 -- Copyright  : Copyright (c) 2012-2014, David Sorokin <david.sorokin@gmail.com>
@@ -47,9 +45,8 @@ data ExperimentSpecsWriter =
                           -- ^ Translated text \"the 4-th order Runge-Kutta\".
                           experimentSpecsFormatter     :: ShowS,
                           -- ^ The formatter of numbers.
-                          experimentSpecsWrite :: forall r a.
-                                                  ExperimentSpecsWriter
-                                                  -> Experiment r a
+                          experimentSpecsWrite :: ExperimentSpecsWriter
+                                                  -> Experiment
                                                   -> HtmlWriter ()
                           -- ^ This function creates HTML.
                         }

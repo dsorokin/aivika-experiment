@@ -79,13 +79,13 @@ instance WebPageRendering r => ExperimentView LastValueView r WebPageWriter wher
     in ExperimentGenerator { generateReporter = reporter }
 
 -- | The state of the view.
-data LastValueViewState r a =
+data LastValueViewState =
   LastValueViewState { lastValueView       :: LastValueView,
-                       lastValueExperiment :: Experiment r a,
+                       lastValueExperiment :: Experiment,
                        lastValueMap        :: M.Map Int (IORef [(String, String)]) }
   
 -- | Create a new state of the view.
-newLastValues :: LastValueView -> Experiment r a -> IO (LastValueViewState r a)
+newLastValues :: LastValueView -> Experiment -> IO LastValueViewState
 newLastValues view exp =
   do let n = experimentRunCount exp
      rs <- forM [0..(n - 1)] $ \i -> newIORef []    
@@ -95,7 +95,7 @@ newLastValues view exp =
                                  lastValueMap        = m }
        
 -- | Get the last values during the simulation.
-simulateLastValues :: LastValueViewState r a -> ExperimentData -> Event DisposableEvent
+simulateLastValues :: LastValueViewState -> ExperimentData -> Event DisposableEvent
 simulateLastValues st expdata =
   do let view    = lastValueView st
          rs      = lastValueSeries view $
@@ -113,7 +113,7 @@ simulateLastValues st expdata =
           liftIO $ writeIORef r output
      
 -- | Get the HTML code.     
-lastValueHtml :: LastValueViewState r a -> Int -> HtmlWriter ()     
+lastValueHtml :: LastValueViewState -> Int -> HtmlWriter ()     
 lastValueHtml st index =
   let n = experimentRunCount $ lastValueExperiment st
   in if n == 1
@@ -121,7 +121,7 @@ lastValueHtml st index =
      else lastValueHtmlMultiple st index
      
 -- | Get the HTML code for a single run.
-lastValueHtmlSingle :: LastValueViewState r a -> Int -> HtmlWriter ()
+lastValueHtmlSingle :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueHtmlSingle st index =
   do header st index
      let r = fromJust $ M.lookup 0 (lastValueMap st)
@@ -130,7 +130,7 @@ lastValueHtmlSingle st index =
        formatPair pair (lastValueFormatter $ lastValueView st)
 
 -- | Get the HTML code for multiple runs
-lastValueHtmlMultiple :: LastValueViewState r a -> Int -> HtmlWriter ()
+lastValueHtmlMultiple :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueHtmlMultiple st index =
   do header st index
      let n = experimentRunCount $ lastValueExperiment st
@@ -147,7 +147,7 @@ lastValueHtmlMultiple st index =
           forM_ pairs $ \pair ->
             formatPair pair (lastValueFormatter $ lastValueView st)
 
-header :: LastValueViewState r a -> Int -> HtmlWriter ()
+header :: LastValueViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $
        writeHtmlText (lastValueTitle $ lastValueView st)
@@ -164,7 +164,7 @@ formatPair (name, value) formatter =
      writeHtmlText $ formatter value
           
 -- | Get the TOC item     
-lastValueTOCHtml :: LastValueViewState r a -> Int -> HtmlWriter ()
+lastValueTOCHtml :: LastValueViewState -> Int -> HtmlWriter ()
 lastValueTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

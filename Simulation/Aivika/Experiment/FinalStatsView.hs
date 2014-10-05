@@ -73,9 +73,9 @@ instance WebPageRendering r => ExperimentView FinalStatsView r WebPageWriter whe
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
-data FinalStatsViewState r a =
+data FinalStatsViewState =
   FinalStatsViewState { finalStatsView       :: FinalStatsView,
-                        finalStatsExperiment :: Experiment r a,
+                        finalStatsExperiment :: Experiment,
                         finalStatsResults    :: MRef (Maybe FinalStatsResults) }
 
 -- | The statistics results.
@@ -84,7 +84,7 @@ data FinalStatsResults =
                       finalStatsValues :: [IORef (SamplingStats Double)] }
   
 -- | Create a new state of the view.
-newFinalStats :: FinalStatsView -> Experiment r a -> FilePath -> IO (FinalStatsViewState r a)
+newFinalStats :: FinalStatsView -> Experiment -> FilePath -> IO FinalStatsViewState
 newFinalStats view exp dir =
   do r <- newMRef Nothing
      return FinalStatsViewState { finalStatsView       = view,
@@ -92,14 +92,14 @@ newFinalStats view exp dir =
                                   finalStatsResults    = r }
        
 -- | Create new statistics results.
-newFinalStatsResults :: [String] -> Experiment r a -> IO FinalStatsResults
+newFinalStatsResults :: [String] -> Experiment -> IO FinalStatsResults
 newFinalStatsResults names exp =
   do values <- forM names $ \_ -> liftIO $ newIORef emptySamplingStats
      return FinalStatsResults { finalStatsNames  = names,
                                 finalStatsValues = values }
 
 -- | Require to return unique final statistics results associated with the specified state. 
-requireFinalStatsResults :: FinalStatsViewState r a -> [String] -> IO FinalStatsResults
+requireFinalStatsResults :: FinalStatsViewState -> [String] -> IO FinalStatsResults
 requireFinalStatsResults st names =
   maybeWriteMRef (finalStatsResults st)
   (newFinalStatsResults names (finalStatsExperiment st)) $ \results ->
@@ -108,7 +108,7 @@ requireFinalStatsResults st names =
   else results
        
 -- | Simulate the specified series.
-simulateFinalStats :: FinalStatsViewState r a -> ExperimentData -> Event DisposableEvent
+simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Event DisposableEvent
 simulateFinalStats st expdata =
   do let view    = finalStatsView st
          rs      = finalStatsSeries view $
@@ -131,7 +131,7 @@ simulateFinalStats st expdata =
                y' `seq` writeIORef value y'
 
 -- | Get the HTML code.     
-finalStatsHtml :: FinalStatsViewState r a -> Int -> HtmlWriter ()
+finalStatsHtml :: FinalStatsViewState -> Int -> HtmlWriter ()
 finalStatsHtml st index =
   do header st index
      results <- liftIO $ readMRef (finalStatsResults st)
@@ -146,7 +146,7 @@ finalStatsHtml st index =
               do stats <- liftIO $ readIORef value
                  write writer name stats
 
-header :: FinalStatsViewState r a -> Int -> HtmlWriter ()
+header :: FinalStatsViewState -> Int -> HtmlWriter ()
 header st index =
   do writeHtmlHeader3WithId ("id" ++ show index) $ 
        writeHtmlText (finalStatsTitle $ finalStatsView st)
@@ -156,7 +156,7 @@ header st index =
        writeHtmlText description
 
 -- | Get the TOC item.
-finalStatsTOCHtml :: FinalStatsViewState r a -> Int -> HtmlWriter ()
+finalStatsTOCHtml :: FinalStatsViewState -> Int -> HtmlWriter ()
 finalStatsTOCHtml st index =
   writeHtmlListItem $
   writeHtmlLink ("#id" ++ show index) $

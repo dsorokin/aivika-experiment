@@ -55,8 +55,7 @@ library
     extensions:      FlexibleInstances,
                      FlexibleContexts,
                      MultiParamTypeClasses,
-                     FunctionalDependencies,
-                     RankNTypes
+                     FunctionalDependencies
                      
     ghc-options:     -O2
 
