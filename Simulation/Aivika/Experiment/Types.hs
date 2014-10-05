@@ -37,7 +37,8 @@ module Simulation.Aivika.Experiment.Types
         -- * Web Page Rendering
         WebPageRendering(..),
         WebPageRenderer(..),
-        WebPageWriter(..)) where
+        WebPageWriter(..),
+        WebPageGenerator(..)) where
 
 import Control.Monad
 import Control.Monad.State
@@ -246,6 +247,9 @@ data WebPageWriter =
 -- | A subclass of renderers that know how to save the @index.html@ file
 -- when rendering the simulation experiment.
 class ExperimentRendering r WebPageWriter => WebPageRendering r
+
+-- | A convenient type synonym for describing the web page generators.
+type WebPageGenerator r = ExperimentGenerator r WebPageWriter
 
 instance WebPageRendering WebPageRenderer
 

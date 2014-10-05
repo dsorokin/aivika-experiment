@@ -43,7 +43,7 @@ experiment =
     experimentRunCount = 3,
     experimentDescription = description }
 
-generators :: WebPageRendering r => [ExperimentGenerator r WebPageWriter]
+generators :: WebPageRendering r => [WebPageGenerator r]
 generators =
   [outputView defaultExperimentSpecsView,
    outputView $ defaultLastValueView {
