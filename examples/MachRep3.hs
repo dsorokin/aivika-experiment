@@ -36,24 +36,26 @@ description =
   "until both machines are down. We find the proportion of up time. It " ++
   "should come out to about 0.45."
 
-experiment :: WebPageRendering r => Experiment r WebPageWriter
+experiment :: Experiment
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
     experimentRunCount = 3,
-    experimentDescription = description,
-    experimentGenerators =
-      [outputView defaultExperimentSpecsView,
-       outputView $ defaultLastValueView {
-         lastValueSeries = resultByName "x" },
-       outputView $ defaultTimingStatsView {
-         timingStatsSeries = resultByName "x" },
-       outputView $ defaultFinalStatsView {
-         finalStatsSeries = resultByName "x" },
-       outputView $ defaultTableView {
-         tableSeries = resultByName "x" }, 
-       outputView $ defaultFinalTableView {
-         finalTableSeries = resultByName "x" } ] }
+    experimentDescription = description }
+
+generators :: WebPageRendering r => [ExperimentGenerator r WebPageWriter]
+generators =
+  [outputView defaultExperimentSpecsView,
+   outputView $ defaultLastValueView {
+     lastValueSeries = resultByName "x" },
+   outputView $ defaultTimingStatsView {
+     timingStatsSeries = resultByName "x" },
+   outputView $ defaultFinalStatsView {
+     finalStatsSeries = resultByName "x" },
+   outputView $ defaultTableView {
+     tableSeries = resultByName "x" }, 
+   outputView $ defaultFinalTableView {
+     finalTableSeries = resultByName "x" } ]
 
 model :: Simulation Results
 model =
@@ -113,4 +115,4 @@ model =
        [resultSource "x" "The proportion of up time" prop,
         resultSource "t" "Simulation time" time]
 
-main = runExperiment experiment WebPageRenderer model
+main = runExperiment experiment generators WebPageRenderer model

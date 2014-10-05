@@ -50,38 +50,40 @@ model n =
          resultSource "m" "M" m,
          resultSource "c" "C" c]
 
-experiment :: WebPageRendering r => Experiment r WebPageWriter
+experiment :: Experiment
 experiment =
   defaultExperiment {
     experimentSpecs = specs,
     experimentRunCount = 1,
     experimentTitle = "Linear Array",
     experimentDescription = "Model Linear Array as described in " ++
-                            "the examples included in Berkeley-Madonna.",
-    experimentGenerators = 
-      [outputView defaultExperimentSpecsView,
-       outputView $ defaultTableView {
-         tableSeries =
-            resultByName "t" <>
-            resultByName "m" <>
-            resultByName "c" },
-       outputView $ defaultFinalTableView {
-         finalTableSeries =
-            resultByName "m" <>
-            resultByName "c" },
-       outputView $ defaultLastValueView {
-         lastValueSeries =
-            resultByName "t" <>
-            resultByName "m" <>
-            resultByName "c" },
-       outputView $ defaultTimingStatsView {
-         timingStatsSeries =
-            resultByName "t" <>
-            resultByName "m" <>
-            resultByName "c" },
-       outputView $ defaultFinalStatsView {
-         finalStatsSeries =
-            resultByName "m" <>
-            resultByName "c" } ] }
+                            "the examples included in Berkeley-Madonna." }
 
-main = runExperiment experiment WebPageRenderer (model 51)
+generators :: WebPageRendering r => [ExperimentGenerator r WebPageWriter]
+generators =
+  [outputView defaultExperimentSpecsView,
+   outputView $ defaultTableView {
+     tableSeries =
+        resultByName "t" <>
+        resultByName "m" <>
+        resultByName "c" },
+   outputView $ defaultFinalTableView {
+     finalTableSeries =
+        resultByName "m" <>
+        resultByName "c" },
+   outputView $ defaultLastValueView {
+     lastValueSeries =
+        resultByName "t" <>
+        resultByName "m" <>
+        resultByName "c" },
+   outputView $ defaultTimingStatsView {
+     timingStatsSeries =
+        resultByName "t" <>
+        resultByName "m" <>
+        resultByName "c" },
+   outputView $ defaultFinalStatsView {
+     finalStatsSeries =
+        resultByName "m" <>
+        resultByName "c" } ]
+
+main = runExperiment experiment generators WebPageRenderer (model 51)
