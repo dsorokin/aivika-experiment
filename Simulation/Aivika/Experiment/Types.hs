@@ -66,6 +66,8 @@ data Experiment =
                -- ^ The simulation specs for the experiment.
                experimentTransform     :: ResultTransform,
                -- ^ How the results must be transformed before rendering.
+               experimentLocalisation  :: ResultLocalisation,
+               -- ^ Specifies a localisation applied when rendering the experiment.
                experimentRunCount      :: Int,
                -- ^ How many simulation runs should be launched.
                experimentDirectoryName :: ExperimentFilePath,
@@ -86,6 +88,7 @@ defaultExperiment :: Experiment
 defaultExperiment =
   Experiment { experimentSpecs         = Specs 0 10 0.01 RungeKutta4 SimpleGenerator,
                experimentTransform     = id,
+               experimentLocalisation  = englishResultLocalisation,
                experimentRunCount      = 1,
                experimentDirectoryName = UniqueFilePath "experiment",
                experimentTitle         = "Simulation Experiment",
