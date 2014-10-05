@@ -75,7 +75,7 @@ instance WebPageRendering r => ExperimentView LastValueView r WebPageWriter wher
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateLastValues st,
-                                         reporterRequest    = const writer }
+                                         reporterRequest    = writer }
     in ExperimentGenerator { generateReporter = reporter }
 
 -- | The state of the view.

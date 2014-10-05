@@ -105,7 +105,7 @@ instance WebPageRendering r => ExperimentView FinalTableView r WebPageWriter whe
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = finaliseFinalTable st,
                                          reporterSimulate   = simulateFinalTable st,
-                                         reporterRequest    = const writer }
+                                         reporterRequest    = writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

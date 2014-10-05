@@ -80,7 +80,7 @@ instance WebPageRendering r => ExperimentView TimingStatsView r WebPageWriter wh
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTimingStats st,
-                                         reporterRequest    = const writer }
+                                         reporterRequest    = writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

@@ -137,7 +137,7 @@ data ExperimentReporter r a =
                        -- and return a finalizer that will be called 
                        -- in the stop time after the last signal is 
                        -- triggered and processed.
-                       reporterRequest :: r -> a
+                       reporterRequest    :: a
                        -- ^ Return data requested by the renderer.
                      }
 
@@ -255,13 +255,13 @@ instance ExperimentRendering WebPageRenderer WebPageWriter where
              writeHtmlDocumentWithTitle (experimentTitle e) $
              do writeHtmlList $
                   forM_ (zip [1..] reporters) $ \(i, reporter) -> 
-                  reporterWriteTOCHtml (reporterRequest reporter r) i
+                  reporterWriteTOCHtml (reporterRequest reporter) i
                 writeHtmlBreak
                 unless (null $ experimentDescription e) $
                   writeHtmlParagraph $
                   writeHtmlText $ experimentDescription e
                 forM_ (zip [1..] reporters) $ \(i, reporter) ->
-                  reporterWriteHtml (reporterRequest reporter r) i
+                  reporterWriteHtml (reporterRequest reporter) i
            file = combine path "index.html"
        ((), contents) <- runHtmlWriter html id
        UTF8.writeFile file (contents [])

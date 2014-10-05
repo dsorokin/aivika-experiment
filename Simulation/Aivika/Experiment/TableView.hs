@@ -123,7 +123,7 @@ instance WebPageRendering r => ExperimentView TableView r WebPageWriter where
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTable st,
-                                         reporterRequest    = const writer }
+                                         reporterRequest    = writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

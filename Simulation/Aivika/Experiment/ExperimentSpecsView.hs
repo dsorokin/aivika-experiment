@@ -54,7 +54,7 @@ instance WebPageRendering r => ExperimentView ExperimentSpecsView r WebPageWrite
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = const $ return mempty,
-                                         reporterRequest    = const writer }
+                                         reporterRequest    = writer }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.
