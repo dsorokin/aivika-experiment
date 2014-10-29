@@ -30,6 +30,7 @@ import System.FilePath
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
@@ -134,7 +135,7 @@ data TableViewState =
                    tableMap        :: M.Map Int FilePath }
   
 -- | Create a new state of the view.
-newTable :: TableView -> Experiment -> FilePath -> IO TableViewState
+newTable :: TableView -> Experiment -> FilePath -> ExperimentWriter TableViewState
 newTable view exp dir =
   do let n = experimentRunCount exp
      fs <- forM [0..(n - 1)] $ \i ->
@@ -144,7 +145,7 @@ newTable view exp dir =
        M.fromList [("$TITLE", tableTitle view),
                    ("$RUN_INDEX", show $ i + 1),
                    ("$RUN_COUNT", show n)]
-     forM_ fs $ flip writeFile []  -- reserve the file names
+     liftIO $ forM_ fs $ flip writeFile []  -- reserve the file names
      let m = M.fromList $ zip [0..(n - 1)] fs
      return TableViewState { tableView       = view,
                              tableExperiment = exp,

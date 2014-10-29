@@ -27,6 +27,7 @@ import Data.Monoid
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.TimingStatsWriter
 import Simulation.Aivika.Experiment.Utils (replace)
@@ -90,10 +91,10 @@ data TimingStatsViewState =
                          timingStatsMap        :: M.Map Int (IORef [(String, IORef (TimingStats Double))]) }
   
 -- | Create a new state of the view.
-newTimingStats :: TimingStatsView -> Experiment -> IO TimingStatsViewState
+newTimingStats :: TimingStatsView -> Experiment -> ExperimentWriter TimingStatsViewState
 newTimingStats view exp =
   do let n = experimentRunCount exp
-     rs <- forM [0..(n - 1)] $ \i -> newIORef []    
+     rs <- forM [0..(n - 1)] $ \i -> liftIO $ newIORef []    
      let m = M.fromList $ zip [0..(n - 1)] rs
      return TimingStatsViewState { timingStatsView       = view,
                                    timingStatsExperiment = exp,

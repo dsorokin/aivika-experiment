@@ -26,6 +26,7 @@ import Data.Maybe
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.SamplingStatsWriter
 import Simulation.Aivika.Experiment.MRef
@@ -84,9 +85,9 @@ data FinalStatsResults =
                       finalStatsValues :: [IORef (SamplingStats Double)] }
   
 -- | Create a new state of the view.
-newFinalStats :: FinalStatsView -> Experiment -> FilePath -> IO FinalStatsViewState
+newFinalStats :: FinalStatsView -> Experiment -> FilePath -> ExperimentWriter FinalStatsViewState
 newFinalStats view exp dir =
-  do r <- newMRef Nothing
+  do r <- liftIO $ newMRef Nothing
      return FinalStatsViewState { finalStatsView       = view,
                                   finalStatsExperiment = exp,
                                   finalStatsResults    = r }

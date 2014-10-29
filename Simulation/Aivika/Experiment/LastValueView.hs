@@ -26,6 +26,7 @@ import Data.Maybe
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
@@ -85,10 +86,10 @@ data LastValueViewState =
                        lastValueMap        :: M.Map Int (IORef [(String, String)]) }
   
 -- | Create a new state of the view.
-newLastValues :: LastValueView -> Experiment -> IO LastValueViewState
+newLastValues :: LastValueView -> Experiment -> ExperimentWriter LastValueViewState
 newLastValues view exp =
   do let n = experimentRunCount exp
-     rs <- forM [0..(n - 1)] $ \i -> newIORef []    
+     rs <- forM [0..(n - 1)] $ \i -> liftIO $ newIORef []    
      let m = M.fromList $ zip [0..(n - 1)] rs
      return LastValueViewState { lastValueView       = view,
                                  lastValueExperiment = exp,

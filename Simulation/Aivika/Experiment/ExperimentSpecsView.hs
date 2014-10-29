@@ -24,6 +24,7 @@ import Data.Monoid
 
 import Simulation.Aivika.Experiment.Types
 import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
 
 -- | Defines the 'View' that shows the experiment specs.
@@ -63,7 +64,7 @@ data ExperimentSpecsViewState =
                              experimentSpecsExperiment :: Experiment }
   
 -- | Create a new state of the view.
-newExperimentSpecs :: ExperimentSpecsView -> Experiment -> IO ExperimentSpecsViewState
+newExperimentSpecs :: ExperimentSpecsView -> Experiment -> ExperimentWriter ExperimentSpecsViewState
 newExperimentSpecs view exp =
   return ExperimentSpecsViewState { experimentSpecsView       = view,
                                     experimentSpecsExperiment = exp }

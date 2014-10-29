@@ -30,10 +30,6 @@ module Simulation.Aivika.Experiment.Types
         ExperimentView(..),
         ExperimentGenerator(..),
         ExperimentReporter(..),
-        ExperimentFilePath(..),
-        resolveFilePath,
-        expandFilePath,
-        mapFilePath,
         -- * Web Page Rendering
         WebPageRendering(..),
         WebPageRenderer(..),
@@ -59,6 +55,7 @@ import GHC.Conc (getNumCapabilities)
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
+import Simulation.Aivika.Experiment.ExperimentWriter
 
 -- | It defines the simulation experiment with the specified rendering backend and its bound data.
 data Experiment = 
@@ -101,11 +98,11 @@ class ExperimentRendering r a | r -> a where
 
   -- | Render the experiment after the simulation is finished, for example,
   -- creating the @index.html@ file in the specified directory.
-  renderExperiment :: Experiment -> r -> [ExperimentReporter a] -> FilePath -> IO ()
+  renderExperiment :: Experiment -> r -> [ExperimentReporter a] -> FilePath -> ExperimentWriter ()
 
 -- | This is a generator of the reporter with the specified rendering backend.                     
 data ExperimentGenerator r a = 
-  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> IO (ExperimentReporter a)
+  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> ExperimentWriter (ExperimentReporter a)
                         -- ^ Generate a reporter bound up with the specified directory.
                       }
 
@@ -127,10 +124,10 @@ data ExperimentData =
 
 -- | Defines what creates the simulation reports by the specified renderer.
 data ExperimentReporter a =
-  ExperimentReporter { reporterInitialise :: IO (),
+  ExperimentReporter { reporterInitialise :: ExperimentWriter (),
                        -- ^ Initialise the reporting before 
                        -- the simulation runs are started.
-                       reporterFinalise   :: IO (),
+                       reporterFinalise   :: ExperimentWriter (),
                        -- ^ Finalise the reporting after
                        -- all simulation runs are finished.
                        reporterSimulate   :: ExperimentData -> Event DisposableEvent,
@@ -198,15 +195,17 @@ runExperimentWithExecutor :: ExperimentRendering r a
                              -> Simulation Results
                              -- ^ the simulation results received from the model
                              -> IO ()
-runExperimentWithExecutor executor e generators r simulation = 
+runExperimentWithExecutor executor e generators r simulation =
+  runExperimentWriter $
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
          dirName    = experimentDirectoryName e
      path <- resolveFilePath "" dirName
-     when (experimentVerbose e) $
-       do putStr "Updating directory " 
-          putStrLn path
-     createDirectoryIfMissing True path
+     liftIO $ do
+       when (experimentVerbose e) $
+         do putStr "Updating directory " 
+            putStrLn path
+       createDirectoryIfMissing True path
      reporters <- mapM (\x -> generateReporter x e r path)
                   generators
      forM_ reporters reporterInitialise
@@ -222,7 +221,8 @@ runExperimentWithExecutor executor e generators r simulation =
                     reporterSimulate reporter d
               runEventInStopTime $
                 disposeEvent $ mconcat fs
-     executor $ runSimulations simulate specs runCount
+     liftIO $
+       executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
      renderExperiment e r reporters path
      return ()
@@ -273,50 +273,8 @@ instance ExperimentRendering WebPageRenderer WebPageWriter where
                   reporterWriteHtml (reporterRequest reporter) i
            file = combine path "index.html"
        ((), contents) <- runHtmlWriter html id
-       UTF8.writeFile file (contents [])
-       when (experimentVerbose e) $
-         do putStr "Generated file "
-            putStrLn file
-  
--- | Specifies the file name, unique or writable, which can be appended with extension if required.
-data ExperimentFilePath = WritableFilePath FilePath
-                          -- ^ The file which is overwritten in 
-                          -- case if it existed before.
-                        | UniqueFilePath FilePath
-                          -- ^ The file which is always unique,
-                          -- when an automatically generated suffix
-                          -- is added to the name in case of need.
-                
--- | Resolve the file path relative to the specified directory passed in the first argument
--- and taking into account a possible requirement to have an unique file name.
-resolveFilePath :: FilePath -> ExperimentFilePath -> IO FilePath
-resolveFilePath dir (WritableFilePath path) =
-  return $ dir </> path
-resolveFilePath dir (UniqueFilePath path)   =
-  let (name, ext) = splitExtension path
-      loop y i =
-        do let n = dir </> addExtension y ext
-           f1 <- doesFileExist n
-           f2 <- doesDirectoryExist n
-           if f1 || f2
-             then loop (name ++ "(" ++ show i ++ ")") (i + 1)
-             else return n
-  in loop name 2
-
--- | Expand the file path using the specified table of substitutions.
-expandFilePath :: ExperimentFilePath -> M.Map String String -> ExperimentFilePath
-expandFilePath (WritableFilePath path) map = WritableFilePath (expandTemplates path map)
-expandFilePath (UniqueFilePath path) map = UniqueFilePath (expandTemplates path map)
-
--- | Expand the string templates using the specified table of substitutions.
-expandTemplates :: String -> M.Map String String -> String     
-expandTemplates name map = name' where
-  ((), name') = flip runState name $
-                forM_ (M.assocs map) $ \(k, v) ->
-                do a <- get
-                   put $ replace k v a
-
--- | Transform the file path using the specified function.
-mapFilePath :: (FilePath -> FilePath) -> ExperimentFilePath -> ExperimentFilePath
-mapFilePath f (WritableFilePath path) = WritableFilePath (f path)
-mapFilePath f (UniqueFilePath path) = UniqueFilePath (f path) 
+       liftIO $ do
+         UTF8.writeFile file (contents [])
+         when (experimentVerbose e) $
+           do putStr "Generated file "
+              putStrLn file

@@ -45,9 +45,11 @@ import Control.Applicative
 
 import Network.URI
 
+import Simulation.Aivika.Experiment.ExperimentWriter
+
 -- | It writes fast an HTML code.
 newtype HtmlWriter a = 
-  HtmlWriter { runHtmlWriter :: ShowS -> IO (a, ShowS)
+  HtmlWriter { runHtmlWriter :: ShowS -> ExperimentWriter (a, ShowS)
                -- ^ Run the HTML writer monad.
              }
 
@@ -63,7 +65,7 @@ instance Monad HtmlWriter where
 instance MonadIO HtmlWriter where       
   
   liftIO m = HtmlWriter $ \f ->
-    do x <- m
+    do x <- liftIO m
        return (x, f)
 
 instance Functor HtmlWriter where

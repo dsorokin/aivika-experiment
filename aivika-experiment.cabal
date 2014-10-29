@@ -37,6 +37,7 @@ library
                      Simulation.Aivika.Experiment.Histogram
                      Simulation.Aivika.Experiment.ExperimentSpecsView
                      Simulation.Aivika.Experiment.ExperimentSpecsWriter
+                     Simulation.Aivika.Experiment.ExperimentWriter
                      Simulation.Aivika.Experiment.FinalTableView
                      Simulation.Aivika.Experiment.Utils
                      Simulation.Aivika.Experiment.MRef

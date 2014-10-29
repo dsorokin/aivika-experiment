@@ -23,6 +23,7 @@ module Simulation.Aivika.Experiment
         module Simulation.Aivika.Experiment.Histogram,
         module Simulation.Aivika.Experiment.ExperimentSpecsView,
         module Simulation.Aivika.Experiment.ExperimentSpecsWriter,
+        module Simulation.Aivika.Experiment.ExperimentWriter,
         module Simulation.Aivika.Experiment.FinalTableView,
         module Simulation.Aivika.Experiment.Utils) where
 
@@ -37,5 +38,6 @@ import Simulation.Aivika.Experiment.FinalStatsView
 import Simulation.Aivika.Experiment.Histogram
 import Simulation.Aivika.Experiment.ExperimentSpecsView
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.FinalTableView
 import Simulation.Aivika.Experiment.Utils

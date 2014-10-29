@@ -31,6 +31,7 @@ import System.FilePath
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
+import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.HtmlWriter
 import Simulation.Aivika.Experiment.MRef
 
@@ -122,10 +123,10 @@ data FinalTableResults =
                       finalTableValues :: MRef (M.Map Int [String]) }
   
 -- | Create a new state of the view.
-newFinalTable :: FinalTableView -> Experiment -> FilePath -> IO FinalTableViewState
+newFinalTable :: FinalTableView -> Experiment -> FilePath -> ExperimentWriter FinalTableViewState
 newFinalTable view exp dir =
-  do f <- newIORef Nothing
-     r <- newMRef Nothing
+  do f <- liftIO $ newIORef Nothing
+     r <- liftIO $ newMRef Nothing
      return FinalTableViewState { finalTableView       = view,
                                   finalTableExperiment = exp,
                                   finalTableDir        = dir, 
@@ -169,44 +170,45 @@ simulateFinalTable st expdata =
           liftIO $ modifyMRef_ values $ return . M.insert i xs
      
 -- | Save the results in the CSV file after the simulation is complete.
-finaliseFinalTable :: FinalTableViewState -> IO ()
+finaliseFinalTable :: FinalTableViewState -> ExperimentWriter ()
 finaliseFinalTable st =
   do let view      = finalTableView st
          run       = finalTableRunText view
          formatter = finalTableFormatter view
          title     = finalTableTitle view
          separator = finalTableSeparator view
-     results <- readMRef $ finalTableResults st
+     results <- liftIO $ readMRef $ finalTableResults st
      case results of
        Nothing -> return ()
        Just results ->
          do let names  = finalTableNames results
                 values = finalTableValues results
-            m <- readMRef values 
+            m <- liftIO $ readMRef values 
             file <- resolveFilePath (finalTableDir st) $
                     mapFilePath (flip replaceExtension ".csv") $
                     expandFilePath (finalTableFileName $ finalTableView st) $
                     M.fromList [("$TITLE", title)]
-            -- create a new file
-            h <- liftIO $ openFile file WriteMode
-            -- write a header
-            hPutStr h $ show run
-            forM_ names $ \name ->
-              do hPutStr h separator
-                 hPutStr h $ show name
-            hPutStrLn h ""
-            -- write data
-            forM_ (M.assocs m) $ \(i, xs) ->
-              do hPutStr h $ show i
-                 forM_ xs $ \x ->
-                   do hPutStr h separator
-                      hPutStr h $ formatter x
-                 hPutStrLn h ""
-            -- close file
-            hClose h 
-            when (experimentVerbose $ finalTableExperiment st) $
-              putStr "Generated file " >> putStrLn file
-            writeIORef (finalTableFile st) $ Just file
+            liftIO $ do
+              -- create a new file
+              h <- openFile file WriteMode
+              -- write a header
+              hPutStr h $ show run
+              forM_ names $ \name ->
+                do hPutStr h separator
+                   hPutStr h $ show name
+              hPutStrLn h ""
+              -- write data
+              forM_ (M.assocs m) $ \(i, xs) ->
+                do hPutStr h $ show i
+                   forM_ xs $ \x ->
+                     do hPutStr h separator
+                        hPutStr h $ formatter x
+                   hPutStrLn h ""
+              -- close file
+              hClose h 
+              when (experimentVerbose $ finalTableExperiment st) $
+                putStr "Generated file " >> putStrLn file
+              writeIORef (finalTableFile st) $ Just file
      
 -- | Get the HTML code.     
 finalTableHtml :: FinalTableViewState -> Int -> HtmlWriter ()
