@@ -146,7 +146,7 @@ requireFinalTableResults st names =
   (newFinalTableResults names (finalTableExperiment st)) $ \results ->
   if (names /= finalTableNames results)
   then error "Series with different names are returned for different runs: requireFinalTableResults"
-  else results
+  else return results
        
 -- | Simulation of the specified series.
 simulateFinalTable :: FinalTableViewState -> ExperimentData -> Event DisposableEvent
@@ -166,7 +166,7 @@ simulateFinalTable st expdata =
      handleSignal signal $ \_ ->
        do xs <- mapM resultExtractData exts
           i  <- liftParameter simulationIndex
-          liftIO $ modifyMRef values $ M.insert i xs
+          liftIO $ modifyMRef_ values $ return . M.insert i xs
      
 -- | Save the results in the CSV file after the simulation is complete.
 finaliseFinalTable :: FinalTableViewState -> IO ()

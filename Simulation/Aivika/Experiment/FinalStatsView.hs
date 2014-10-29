@@ -105,7 +105,7 @@ requireFinalStatsResults st names =
   (newFinalStatsResults names (finalStatsExperiment st)) $ \results ->
   if (names /= finalStatsNames results)
   then error "Series with different names are returned for different runs: requireFinalStatsResults"
-  else results
+  else return results
        
 -- | Simulate the specified series.
 simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Event DisposableEvent

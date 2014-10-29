@@ -17,7 +17,9 @@ module Simulation.Aivika.Experiment.MRef
         maybeReadMRef,
         writeMRef,
         maybeWriteMRef,
-        modifyMRef) where
+        modifyMRef_,
+        modifyMRef,
+        withMRef) where
 
 import Control.Concurrent.MVar
 
@@ -46,16 +48,16 @@ readMRef = readIORef . mrefData
 
 -- | Like 'maybe' but for the shared reference under assumption
 -- that the reference is updated only once by its initial value.
-maybeReadMRef :: b -> (a -> b) -> MRef (Maybe a) -> IO b
+maybeReadMRef :: b -> (a -> IO b) -> MRef (Maybe a) -> IO b
 maybeReadMRef b0 f x =
   do a <- readIORef (mrefData x)
      case a of
-       Just a -> return (f a)
+       Just a -> f a
        Nothing ->
          withMVar (mrefLock x) $ \() ->
          do a <- readIORef (mrefData x)
             case a of
-              Just a -> return (f a)
+              Just a -> f a
               Nothing -> return b0
 
 -- | Update the contents of the shared reference.
@@ -66,23 +68,40 @@ writeMRef x a =
 
 -- | Update the contents if the reference was empty and then return a result of
 -- applying the specified function to either the initial or current value.
-maybeWriteMRef :: MRef (Maybe a) -> IO a -> (a -> b) -> IO b
+maybeWriteMRef :: MRef (Maybe a) -> IO a -> (a -> IO b) -> IO b
 maybeWriteMRef x m0 f =
   do a <- readIORef (mrefData x)
      case a of
-       Just a -> return (f a)
+       Just a -> f a
        Nothing ->
          withMVar (mrefLock x) $ \() ->
          do a <- readIORef (mrefData x)
             case a of
-              Just a -> return (f a)
+              Just a -> f a
               Nothing ->
                 do a0 <- m0
                    writeIORef (mrefData x) (Just a0)
-                   return (f a0)
+                   f a0
 
 -- | Modify the contents of the shared reference.
-modifyMRef :: MRef a -> (a -> a) -> IO ()
+modifyMRef_ :: MRef a -> (a -> IO a) -> IO ()
+modifyMRef_ x f =
+  withMVar (mrefLock x) $ \() ->
+  do a  <- readIORef (mrefData x)
+     a' <- f a
+     writeIORef (mrefData x) a'
+
+-- | Modify the contents of the shared reference but allow returning the result.
+modifyMRef :: MRef a -> (a -> IO (a, b)) -> IO b
 modifyMRef x f =
   withMVar (mrefLock x) $ \() ->
-  modifyIORef (mrefData x) f
+  do a <- readIORef (mrefData x)
+     (a', b) <- f a
+     writeIORef (mrefData x) a'
+     return b
+
+-- | A safe wrapper for operating with the contents of shared reference.
+withMRef :: MRef a -> (a -> IO b) -> IO b
+withMRef x f =
+  withMVar (mrefLock x) $ \() ->
+  readIORef (mrefData x) >>= f
