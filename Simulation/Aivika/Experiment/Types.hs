@@ -219,8 +219,18 @@ runExperimentWithExecutor executor e generators r simulation =
                     runEventWith EarlierEvents $
                     forM reporters $ \reporter ->
                     reporterSimulate reporter d
-              runEventInStopTime $
-                disposeEvent $ mconcat fs
+              let m1 =
+                    runEventInStopTime $
+                    return ()
+                  m2 =
+                    runEventInStopTime $
+                    disposeEvent $ mconcat fs
+                  mh (SimulationException e') =
+                    when (experimentVerbose e) $
+                    liftIO $
+                    do putStr "A simulation exception has been raised when running: " 
+                       putStrLn $ show e'
+              finallySimulation (catchSimulation m1 mh) m2
      liftIO $
        executor $ runSimulations simulate specs runCount
      forM_ reporters reporterFinalise
