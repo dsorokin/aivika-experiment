@@ -1,5 +1,5 @@
 name:            aivika-experiment
-version:         2.1
+version:         2.2
 synopsis:        Simulation experiments for the Aivika library
 description:
     This package allows defining simulation experiments for the Aivika
@@ -51,7 +51,7 @@ library
                      split >= 0.2.2,
                      network-uri >= 2.6,
                      parallel-io >= 0.3.2.1,
-                     aivika >= 2.1
+                     aivika >= 2.2
 
     extensions:      FlexibleInstances,
                      FlexibleContexts,
