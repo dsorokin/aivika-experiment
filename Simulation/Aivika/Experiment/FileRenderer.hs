@@ -20,6 +20,9 @@ import Simulation.Aivika.Experiment.Types
 data FileRenderer a = FileRenderer a
                       -- ^ A file renderer that depends on the provided parameter.
 
+-- | A convenient type synonym for describing a file generator.
+type FileGenerator a = ExperimentGenerator (FileRenderer a)
+
 -- | Saving the results of simulation in files when running the experiment.
 instance ExperimentRendering (FileRenderer a) where
 

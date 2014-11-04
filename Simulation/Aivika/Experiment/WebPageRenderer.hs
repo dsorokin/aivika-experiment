@@ -47,6 +47,9 @@ data WebPageWriter =
                   -- the ordered number of the item.
                 }
 
+-- | A convenient type synonym for describing a web page generator.
+type WebPageGenerator a = ExperimentGenerator (WebPageRenderer a)
+
 -- | Rending a web page with results when running the simulation experiment.
 instance ExperimentRendering (WebPageRenderer a) where
 
