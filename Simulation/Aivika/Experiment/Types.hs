@@ -19,43 +19,21 @@
 -- views are provided.
 --
 
-module Simulation.Aivika.Experiment.Types
-       (-- * General Definitions
-        Experiment(..),
-        ExperimentRendering(..),
-        ExperimentContext(..),
-        defaultExperiment,
-        runExperiment,
-        runExperimentParallel,
-        ExperimentData(..),
-        ExperimentView(..),
-        ExperimentGenerator(..),
-        ExperimentReporter(..),
-        -- * Web Page Rendering
-        WebPageRenderer(..),
-        WebPageWriter(..),
-        -- * Saving the Results in Files
-        FileRenderer(..)) where
+module Simulation.Aivika.Experiment.Types where
 
 import Control.Monad
 import Control.Monad.State
 import Control.Concurrent.ParallelIO.Local
 
-import qualified Data.Map as M
-
-import Data.Ix
 import Data.Maybe
 import Data.Monoid
 
-import qualified System.IO.UTF8 as UTF8
 import System.Directory
 import System.FilePath
 
 import GHC.Conc (getNumCapabilities)
 
 import Simulation.Aivika
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.Utils (replace)
 import Simulation.Aivika.Experiment.ExperimentWriter
 
 -- | It defines the simulation experiment with the specified rendering backend and its bound data.
@@ -240,63 +218,3 @@ runExperimentWithExecutor executor e generators r simulation =
      forM_ reporters reporterFinalise
      renderExperiment e r reporters path
      return ()
-
--- | It defines the web page renderer for simulation 'Experiment'. 
-data WebPageRenderer a = WebPageRenderer a
-
--- | It replies to the requests made by the web page renderer.
-data WebPageWriter =
-  WebPageWriter { reporterWriteTOCHtml :: Int -> HtmlWriter (),
-                  -- ^ Return a TOC (Table of Contents) item for 
-                  -- the HTML index file after the finalisation 
-                  -- function is called, i.e. in the very end. 
-                  -- The agument specifies the ordered number of 
-                  -- the item.
-                  --
-                  -- You should wrap your HTML in 'writeHtmlListItem'.
-                  reporterWriteHtml :: Int -> HtmlWriter ()
-                  -- ^ Return an HTML code for the index file
-                  -- after the finalisation function is called,
-                  -- i.e. in the very end. The agument specifies
-                  -- the ordered number of the item.
-                }
-
-instance ExperimentRendering (WebPageRenderer a) where
-
-  -- | A web page context.
-  newtype ExperimentContext (WebPageRenderer a) =
-    WebPageContext { runWebPageContext :: WebPageWriter
-                     -- ^ Run the web page context.
-                   }
-
-  renderExperiment e r reporters path = 
-    do let html :: HtmlWriter ()
-           html = 
-             writeHtmlDocumentWithTitle (experimentTitle e) $
-             do writeHtmlList $
-                  forM_ (zip [1..] reporters) $ \(i, reporter) -> 
-                  reporterWriteTOCHtml (runWebPageContext $
-                                        reporterContext reporter) i
-                writeHtmlBreak
-                unless (null $ experimentDescription e) $
-                  writeHtmlParagraph $
-                  writeHtmlText $ experimentDescription e
-                forM_ (zip [1..] reporters) $ \(i, reporter) ->
-                  reporterWriteHtml (runWebPageContext $
-                                     reporterContext reporter) i
-           file = combine path "index.html"
-       ((), contents) <- runHtmlWriter html id
-       liftIO $ do
-         UTF8.writeFile file (contents [])
-         when (experimentVerbose e) $
-           do putStr "Generated file "
-              putStrLn file
-
--- | It defines a simulation 'Experiment' renderer that saves the results in files. 
-data FileRenderer a = FileRenderer a
-
-instance ExperimentRendering (FileRenderer a) where
-
-  data ExperimentContext (FileRenderer a) = FileContext
-  
-  renderExperiment e r reporters path = return ()

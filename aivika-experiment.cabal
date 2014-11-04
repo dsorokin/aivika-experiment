@@ -41,6 +41,8 @@ library
                      Simulation.Aivika.Experiment.FinalTableView
                      Simulation.Aivika.Experiment.Utils
                      Simulation.Aivika.Experiment.MRef
+                     Simulation.Aivika.Experiment.WebPageRenderer
+                     Simulation.Aivika.Experiment.FileRenderer
                      
     build-depends:   base >= 3 && < 6,
                      mtl >= 1.1.0.2,
