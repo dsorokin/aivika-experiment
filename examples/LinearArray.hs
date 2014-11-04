@@ -59,7 +59,7 @@ experiment =
     experimentDescription = "Model Linear Array as described in " ++
                             "the examples included in Berkeley-Madonna." }
 
-generators :: WebPageRendering r => [WebPageGenerator r]
+generators :: [WebPageGenerator a]
 generators =
   [outputView defaultExperimentSpecsView,
    outputView $ defaultTableView {
@@ -86,4 +86,4 @@ generators =
         resultByName "m" <>
         resultByName "c" } ]
 
-main = runExperiment experiment generators WebPageRenderer (model 51)
+main = runExperiment experiment generators (WebPageRenderer ()) (model 51)

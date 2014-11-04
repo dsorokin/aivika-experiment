@@ -43,7 +43,7 @@ experiment =
     experimentRunCount = 3,
     experimentDescription = description }
 
-generators :: WebPageRendering r => [WebPageGenerator r]
+generators :: [WebPageGenerator a]
 generators =
   [outputView defaultExperimentSpecsView,
    outputView $ defaultLastValueView {
@@ -115,4 +115,4 @@ model =
        [resultSource "x" "The proportion of up time" prop,
         resultSource "t" "Simulation time" time]
 
-main = runExperiment experiment generators WebPageRenderer model
+main = runExperiment experiment generators (WebPageRenderer ()) model
