@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.FinalStatsView
@@ -59,18 +59,19 @@ defaultFinalStatsView =
                    finalStatsTransform   = id,
                    finalStatsSeries      = id }
 
-instance WebPageRendering r => ExperimentView FinalStatsView r WebPageWriter where
+instance ExperimentView FinalStatsView (WebPageRenderer a) where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newFinalStats v exp dir
-             let writer =
+             let context =
+                   WebPageContext $
                    WebPageWriter { reporterWriteTOCHtml = finalStatsTOCHtml st,
                                    reporterWriteHtml    = finalStatsHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateFinalStats st,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

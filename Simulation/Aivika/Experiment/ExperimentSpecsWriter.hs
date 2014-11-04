@@ -67,7 +67,7 @@ defaultExperimentSpecsWriter =
     experimentSpecsRungeKutta4Text = "the 4-th order Runge-Kutta",
     experimentSpecsFormatter = id,
     experimentSpecsWrite = \writer exp ->
-      do let format x = experimentSpecsFormatter writer (show x)
+      do let format x = experimentSpecsFormatter writer x
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ experimentSpecsWidth writer
@@ -84,7 +84,7 @@ defaultExperimentSpecsWriter =
          writeHtmlText $ experimentSpecsStartTimeText writer 
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ spcStartTime $ experimentSpecs exp
+         writeHtmlText $ format $ show $ spcStartTime $ experimentSpecs exp
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -92,7 +92,7 @@ defaultExperimentSpecsWriter =
          writeHtmlText $ experimentSpecsStopTimeText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ spcStopTime $ experimentSpecs exp
+         writeHtmlText $ format $ show $ spcStopTime $ experimentSpecs exp
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -100,7 +100,7 @@ defaultExperimentSpecsWriter =
          writeHtmlText $ experimentSpecsDTText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ spcDT $ experimentSpecs exp
+         writeHtmlText $ format $ show $ spcDT $ experimentSpecs exp
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -108,7 +108,7 @@ defaultExperimentSpecsWriter =
          writeHtmlText $ experimentSpecsRunCountText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ experimentRunCount exp
+         writeHtmlText $ format $ show $ experimentRunCount exp
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"

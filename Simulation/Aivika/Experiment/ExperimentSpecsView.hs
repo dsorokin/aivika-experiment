@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.ExperimentSpecsView
@@ -44,18 +44,19 @@ defaultExperimentSpecsView =
                         experimentSpecsDescription = "It shows the experiment specs.",
                         experimentSpecsWriter      = defaultExperimentSpecsWriter }
 
-instance WebPageRendering r => ExperimentView ExperimentSpecsView r WebPageWriter where  
+instance ExperimentView ExperimentSpecsView (WebPageRenderer a) where  
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newExperimentSpecs v exp
-             let writer =
+             let context =
+                   WebPageContext $
                    WebPageWriter { reporterWriteTOCHtml = experimentSpecsTOCHtml st,
                                    reporterWriteHtml    = experimentSpecsHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = const $ return mempty,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

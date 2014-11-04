@@ -55,7 +55,7 @@ defaultSamplingStatsWriter =
     samplingStatsCountText = "count",
     samplingStatsFormatter = id,
     samplingStatsWrite = \writer name stats ->
-      do let format x = samplingStatsFormatter writer (show x)
+      do let format x = samplingStatsFormatter writer x
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ samplingStatsWidth writer
@@ -72,7 +72,7 @@ defaultSamplingStatsWriter =
          writeHtmlText $ samplingStatsMeanText writer 
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ samplingStatsMean stats
+         writeHtmlText $ format $ show $ samplingStatsMean stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -80,7 +80,7 @@ defaultSamplingStatsWriter =
          writeHtmlText $ samplingStatsDeviationText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ samplingStatsDeviation stats
+         writeHtmlText $ format $ show $ samplingStatsDeviation stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -88,7 +88,7 @@ defaultSamplingStatsWriter =
          writeHtmlText $ samplingStatsMinText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ samplingStatsMin stats
+         writeHtmlText $ format $ show $ samplingStatsMin stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -96,7 +96,7 @@ defaultSamplingStatsWriter =
          writeHtmlText $ samplingStatsMaxText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ samplingStatsMax stats
+         writeHtmlText $ format $ show $ samplingStatsMax stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -104,7 +104,7 @@ defaultSamplingStatsWriter =
          writeHtmlText $ samplingStatsCountText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtml $ format $ samplingStatsCount stats
+         writeHtml $ format $ show $ samplingStatsCount stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "</table>" 

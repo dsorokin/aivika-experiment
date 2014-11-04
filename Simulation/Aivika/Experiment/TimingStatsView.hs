@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.TimingStatsView
@@ -70,18 +70,19 @@ defaultTimingStatsView =
                     timingStatsTransform   = id,
                     timingStatsSeries      = id }
 
-instance WebPageRendering r => ExperimentView TimingStatsView r WebPageWriter where  
+instance ExperimentView TimingStatsView (WebPageRenderer a) where  
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newTimingStats v exp
-             let writer =
+             let context =
+                   WebPageContext $
                    WebPageWriter { reporterWriteTOCHtml = timingStatsTOCHtml st,
                                    reporterWriteHtml    = timingStatsHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTimingStats st,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

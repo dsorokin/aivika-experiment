@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.LastValueView
@@ -65,18 +65,19 @@ defaultLastValueView =
                   lastValueTransform   = id,
                   lastValueSeries      = id }
   
-instance WebPageRendering r => ExperimentView LastValueView r WebPageWriter where  
+instance ExperimentView LastValueView (WebPageRenderer a) where  
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newLastValues v exp
-             let writer =
+             let context =
+                   WebPageContext $
                    WebPageWriter { reporterWriteTOCHtml = lastValueTOCHtml st,
                                    reporterWriteHtml    = lastValueHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateLastValues st,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
     in ExperimentGenerator { generateReporter = reporter }
 
 -- | The state of the view.

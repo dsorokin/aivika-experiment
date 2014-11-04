@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.TableView
@@ -113,18 +113,30 @@ defaultTableView =
               tableTransform   = expandResults,
               tableSeries      = id }
   
-instance WebPageRendering r => ExperimentView TableView r WebPageWriter where
+instance ExperimentView TableView (WebPageRenderer a) where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newTable v exp dir
-             let writer =
+             let context =
+                   WebPageContext $
                    WebPageWriter { reporterWriteTOCHtml = tableTOCHtml st,
                                    reporterWriteHtml    = tableHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = return (),
                                          reporterSimulate   = simulateTable st,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
+    in ExperimentGenerator { generateReporter = reporter }
+  
+instance ExperimentView TableView (FileRenderer a) where
+  
+  outputView v = 
+    let reporter exp renderer dir =
+          do st <- newTable v exp dir
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = return (),
+                                         reporterSimulate   = simulateTable st,
+                                         reporterContext    = FileContext }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

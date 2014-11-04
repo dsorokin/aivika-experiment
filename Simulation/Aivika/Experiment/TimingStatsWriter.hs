@@ -55,7 +55,7 @@ defaultTimingStatsWriter =
     timingStatsMaxText = "maximum",
     timingStatsFormatter = id,
     timingStatsWrite = \writer name stats ->
-      do let format x = timingStatsFormatter writer (show x)
+      do let format x = timingStatsFormatter writer x
          writeHtml "<p>"
          writeHtml "<table frame='border' cellspacing='4' width='"
          writeHtml $ show $ timingStatsWidth writer
@@ -72,7 +72,7 @@ defaultTimingStatsWriter =
          writeHtmlText $ timingStatsMeanText writer 
          writeHtml "</td>"
          writeHtml "<td colspan='2'>"
-         writeHtmlText $ format $ timingStatsMean stats
+         writeHtmlText $ format $ show $ timingStatsMean stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -80,7 +80,7 @@ defaultTimingStatsWriter =
          writeHtmlText $ timingStatsDeviationText writer
          writeHtml "</td>"
          writeHtml "<td colspan='2'>"
-         writeHtmlText $ format $ timingStatsDeviation stats
+         writeHtmlText $ format $ show $ timingStatsDeviation stats
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
@@ -88,13 +88,13 @@ defaultTimingStatsWriter =
          writeHtmlText $ timingStatsMinText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ timingStatsMin stats
+         writeHtmlText $ format $ show $ timingStatsMin stats
          writeHtml "</td>"
          writeHtml "<td>"
          writeHtmlText "("
          writeHtmlText $ timingStatsTimeText writer
          writeHtmlText " = "
-         writeHtmlText $ format $ timingStatsMinTime stats
+         writeHtmlText $ format $ show $ timingStatsMinTime stats
          writeHtmlText ")"
          writeHtml "</td>"
          writeHtml "</tr>"
@@ -103,13 +103,13 @@ defaultTimingStatsWriter =
          writeHtmlText $ timingStatsMaxText writer
          writeHtml "</td>"
          writeHtml "<td>"
-         writeHtmlText $ format $ timingStatsMax stats
+         writeHtmlText $ format $ show $ timingStatsMax stats
          writeHtml "</td>"
          writeHtml "<td>"
          writeHtmlText "("
          writeHtmlText $ timingStatsTimeText writer
          writeHtmlText " = "
-         writeHtmlText $ format $ timingStatsMaxTime stats
+         writeHtmlText $ format $ show $ timingStatsMaxTime stats
          writeHtmlText ")"
          writeHtml "</td>"
          writeHtml "</tr>"
@@ -119,9 +119,9 @@ defaultTimingStatsWriter =
          writeHtml "</td>"
          writeHtml "<td colspan='2'>"
          writeHtml "["
-         writeHtml $ format $ timingStatsStartTime stats
+         writeHtml $ format $ show $ timingStatsStartTime stats
          writeHtml "; "
-         writeHtml $ format $ timingStatsLastTime stats
+         writeHtml $ format $ show $ timingStatsLastTime stats
          writeHtml "]"
          writeHtml "</td>"
          writeHtml "</tr>"

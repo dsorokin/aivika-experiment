@@ -1,5 +1,5 @@
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.FinalTableView
@@ -95,18 +95,30 @@ defaultFinalTableView =
                    finalTableTransform   = expandResults,
                    finalTableSeries      = id }
 
-instance WebPageRendering r => ExperimentView FinalTableView r WebPageWriter where
+instance ExperimentView FinalTableView (WebPageRenderer a) where
   
   outputView v = 
     let reporter exp renderer dir =
           do st <- newFinalTable v exp dir
-             let writer =
+             let context =
+                   WebPageContext
                    WebPageWriter { reporterWriteTOCHtml = finalTableTOCHtml st,
                                    reporterWriteHtml    = finalTableHtml st }
              return ExperimentReporter { reporterInitialise = return (),
                                          reporterFinalise   = finaliseFinalTable st,
                                          reporterSimulate   = simulateFinalTable st,
-                                         reporterRequest    = writer }
+                                         reporterContext    = context }
+    in ExperimentGenerator { generateReporter = reporter }
+
+instance ExperimentView FinalTableView (FileRenderer a) where
+  
+  outputView v = 
+    let reporter exp renderer dir =
+          do st <- newFinalTable v exp dir
+             return ExperimentReporter { reporterInitialise = return (),
+                                         reporterFinalise   = finaliseFinalTable st,
+                                         reporterSimulate   = simulateFinalTable st,
+                                         reporterContext    = FileContext }
     in ExperimentGenerator { generateReporter = reporter }
   
 -- | The state of the view.

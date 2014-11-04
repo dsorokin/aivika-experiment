@@ -1,5 +1,5 @@
 
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
@@ -23,6 +23,7 @@ module Simulation.Aivika.Experiment.Types
        (-- * General Definitions
         Experiment(..),
         ExperimentRendering(..),
+        ExperimentContext(..),
         defaultExperiment,
         runExperiment,
         runExperimentParallel,
@@ -31,10 +32,10 @@ module Simulation.Aivika.Experiment.Types
         ExperimentGenerator(..),
         ExperimentReporter(..),
         -- * Web Page Rendering
-        WebPageRendering(..),
         WebPageRenderer(..),
         WebPageWriter(..),
-        WebPageGenerator(..)) where
+        -- * Saving the Results in Files
+        FileRenderer(..)) where
 
 import Control.Monad
 import Control.Monad.State
@@ -94,25 +95,28 @@ defaultExperiment =
                experimentNumCapabilities = getNumCapabilities }
 
 -- | It allows rendering the simulation results in an arbitrary way.
-class ExperimentRendering r a | r -> a where
+class ExperimentRendering r where
+
+  -- | Defines a context used when rendering the experiment.
+  data ExperimentContext r :: *
 
   -- | Render the experiment after the simulation is finished, for example,
   -- creating the @index.html@ file in the specified directory.
-  renderExperiment :: Experiment -> r -> [ExperimentReporter a] -> FilePath -> ExperimentWriter ()
+  renderExperiment :: Experiment -> r -> [ExperimentReporter r] -> FilePath -> ExperimentWriter ()
 
 -- | This is a generator of the reporter with the specified rendering backend.                     
-data ExperimentGenerator r a = 
-  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> ExperimentWriter (ExperimentReporter a)
+data ExperimentGenerator r = 
+  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> ExperimentWriter (ExperimentReporter r)
                         -- ^ Generate a reporter bound up with the specified directory.
                       }
 
 -- | Defines a view in which the simulation results should be saved.
 -- You should extend this type class to define your own views such
 -- as the PDF document.
-class ExperimentRendering r a => ExperimentView v r a | r -> a where
+class ExperimentRendering r => ExperimentView v r where
   
   -- | Create a generator of the reporter.
-  outputView :: v -> ExperimentGenerator r a
+  outputView :: v -> ExperimentGenerator r
 
 -- | It describes the source simulation data used in the experiment.
 data ExperimentData =
@@ -123,7 +127,7 @@ data ExperimentData =
                  }
 
 -- | Defines what creates the simulation reports by the specified renderer.
-data ExperimentReporter a =
+data ExperimentReporter r =
   ExperimentReporter { reporterInitialise :: ExperimentWriter (),
                        -- ^ Initialise the reporting before 
                        -- the simulation runs are started.
@@ -135,17 +139,17 @@ data ExperimentReporter a =
                        -- and return a finalizer that will be called 
                        -- in the stop time after the last signal is 
                        -- triggered and processed.
-                       reporterRequest    :: a
-                       -- ^ Return data requested by the renderer.
+                       reporterContext    :: ExperimentContext r
+                       -- ^ Return a context used by the renderer.
                      }
 
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: ExperimentRendering r a
+runExperiment :: ExperimentRendering r
                  => Experiment
                  -- ^ the simulation experiment to run
-                 -> [ExperimentGenerator r a]
+                 -> [ExperimentGenerator r]
                  -- ^ generators used for rendering
                  -> r
                  -- ^ the rendering backend
@@ -166,10 +170,10 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: ExperimentRendering r a
+runExperimentParallel :: ExperimentRendering r
                          => Experiment
                          -- ^ the simulation experiment to run
-                         -> [ExperimentGenerator r a]
+                         -> [ExperimentGenerator r]
                          -- ^ generators used for rendering
                          -> r
                          -- ^ the rendering backend
@@ -183,12 +187,12 @@ runExperimentParallel e = runExperimentWithExecutor executor e
                parallel_ pool tasks
                         
 -- | Run the simulation experiment with the specified executor.
-runExperimentWithExecutor :: ExperimentRendering r a 
+runExperimentWithExecutor :: ExperimentRendering r
                              => ([IO ()] -> IO ())
                              -- ^ an executor that allows parallelizing the simulation if required
                              -> Experiment
                              -- ^ the simulation experiment to run
-                             -> [ExperimentGenerator r a]
+                             -> [ExperimentGenerator r]
                              -- ^ generators used for rendering
                              -> r
                              -- ^ the rendering backend
@@ -238,7 +242,7 @@ runExperimentWithExecutor executor e generators r simulation =
      return ()
 
 -- | It defines the web page renderer for simulation 'Experiment'. 
-data WebPageRenderer = WebPageRenderer
+data WebPageRenderer a = WebPageRenderer a
 
 -- | It replies to the requests made by the web page renderer.
 data WebPageWriter =
@@ -257,16 +261,13 @@ data WebPageWriter =
                   -- the ordered number of the item.
                 }
 
--- | A subclass of renderers that know how to save the @index.html@ file
--- when rendering the simulation experiment.
-class ExperimentRendering r WebPageWriter => WebPageRendering r
+instance ExperimentRendering (WebPageRenderer a) where
 
--- | A convenient type synonym for describing the web page generators.
-type WebPageGenerator r = ExperimentGenerator r WebPageWriter
-
-instance WebPageRendering WebPageRenderer
-
-instance ExperimentRendering WebPageRenderer WebPageWriter where
+  -- | A web page context.
+  newtype ExperimentContext (WebPageRenderer a) =
+    WebPageContext { runWebPageContext :: WebPageWriter
+                     -- ^ Run the web page context.
+                   }
 
   renderExperiment e r reporters path = 
     do let html :: HtmlWriter ()
@@ -274,13 +275,15 @@ instance ExperimentRendering WebPageRenderer WebPageWriter where
              writeHtmlDocumentWithTitle (experimentTitle e) $
              do writeHtmlList $
                   forM_ (zip [1..] reporters) $ \(i, reporter) -> 
-                  reporterWriteTOCHtml (reporterRequest reporter) i
+                  reporterWriteTOCHtml (runWebPageContext $
+                                        reporterContext reporter) i
                 writeHtmlBreak
                 unless (null $ experimentDescription e) $
                   writeHtmlParagraph $
                   writeHtmlText $ experimentDescription e
                 forM_ (zip [1..] reporters) $ \(i, reporter) ->
-                  reporterWriteHtml (reporterRequest reporter) i
+                  reporterWriteHtml (runWebPageContext $
+                                     reporterContext reporter) i
            file = combine path "index.html"
        ((), contents) <- runHtmlWriter html id
        liftIO $ do
@@ -288,3 +291,12 @@ instance ExperimentRendering WebPageRenderer WebPageWriter where
          when (experimentVerbose e) $
            do putStr "Generated file "
               putStrLn file
+
+-- | It defines a simulation 'Experiment' renderer that saves the results in files. 
+data FileRenderer a = FileRenderer a
+
+instance ExperimentRendering (FileRenderer a) where
+
+  data ExperimentContext (FileRenderer a) = FileContext
+  
+  renderExperiment e r reporters path = return ()

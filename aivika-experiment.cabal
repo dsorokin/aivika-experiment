@@ -53,10 +53,8 @@ library
                      parallel-io >= 0.3.2.1,
                      aivika >= 2.2
 
-    extensions:      FlexibleInstances,
-                     FlexibleContexts,
-                     MultiParamTypeClasses,
-                     FunctionalDependencies
+    extensions:      MultiParamTypeClasses,
+                     TypeFamilies
                      
     ghc-options:     -O2
 
