@@ -117,17 +117,17 @@ simulateFinalStats st expdata =
          rs      = finalStatsSeries view $
                    finalStatsTransform view $
                    experimentResults expdata
-         exts    = extractDoubleStatsEitherResults rs
+         exts    = resultsToDoubleStatsEitherValues rs
          signals = experimentPredefinedSignals expdata
          signal  = filterSignalM (const predicate) $
                    resultSignalInStopTime signals
-         names   = map resultExtractName exts
+         names   = map resultValueName exts
          predicate = finalStatsPredicate view
      results <- liftIO $ requireFinalStatsResults st names
      let values = finalStatsValues results 
      handleSignal signal $ \_ ->
        forM_ (zip exts values) $ \(ext, value) ->
-       do x <- resultExtractData ext
+       do x <- resultValueData ext
           liftIO $
             do y <- readIORef value
                let y' = combineSamplingStatsEither x y

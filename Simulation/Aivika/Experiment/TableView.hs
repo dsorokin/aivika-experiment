@@ -173,7 +173,7 @@ simulateTable st expdata =
          rs      = tableSeries view $
                    tableTransform view $
                    experimentResults expdata
-         exts    = extractStringResults rs
+         exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
          signal  = pureResultSignal signals $
                    resultSignal rs
@@ -189,13 +189,13 @@ simulateTable st expdata =
        do forM_ (zip [0..] exts) $ \(column, ext) ->
             do when (column > 0) $ 
                  hPutStr h separator
-               hPutStr h $ show $ resultExtractName ext
+               hPutStr h $ show $ resultValueName ext
           hPutStrLn h ""
      d1 <- handleSignal signal $ \t ->
        do p <- predicate
           when p $
             do forM_ (zip [0..] exts) $ \(column, ext) ->  -- write the row
-                 do x <- resultExtractData ext             -- write the column
+                 do x <- resultValueData ext               -- write the column
                     liftIO $
                       do when (column > 0) $ 
                            hPutStr h separator

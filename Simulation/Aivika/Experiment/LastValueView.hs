@@ -104,15 +104,15 @@ simulateLastValues st expdata =
          rs      = lastValueSeries view $
                    lastValueTransform view $
                    experimentResults expdata
-         exts    = extractStringResults rs
+         exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
          signal  = resultSignalInStopTime signals
      i <- liftParameter simulationIndex
      handleSignal signal $ \t ->
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM exts $ \ext ->
-            do x <- resultExtractData ext
-               return (resultExtractName ext, x)
+            do x <- resultValueData ext
+               return (resultValueName ext, x)
           liftIO $ writeIORef r output
      
 -- | Get the HTML code.     

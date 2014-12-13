@@ -109,7 +109,7 @@ simulateTimingStats st expdata =
          rs      = timingStatsSeries view $
                    timingStatsTransform view $
                    experimentResults expdata
-         exts    = extractDoubleResults rs
+         exts    = resultsToDoubleValues rs
          signals = experimentPredefinedSignals expdata
          signal  = filterSignalM (const predicate) $
                    pureResultSignal signals $
@@ -119,11 +119,11 @@ simulateTimingStats st expdata =
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
      ds <- forM exts $ \ext ->
        do stats <- liftIO $ newIORef emptyTimingStats
-          let name = resultExtractName ext
+          let name = resultValueName ext
           liftIO $ modifyIORef r ((:) (name, stats))
           handleSignal signal $ \_ ->
             do t <- liftDynamics time
-               x <- resultExtractData ext
+               x <- resultValueData ext
                liftIO $
                  do y <- readIORef stats
                     let y' = addTimingStats t x y
