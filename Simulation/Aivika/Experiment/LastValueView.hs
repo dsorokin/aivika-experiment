@@ -3,7 +3,7 @@
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.LastValueView
--- Copyright  : Copyright (c) 2012-2014, David Sorokin <david.sorokin@gmail.com>
+-- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
