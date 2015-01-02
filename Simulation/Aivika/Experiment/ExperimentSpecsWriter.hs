@@ -76,7 +76,7 @@ defaultExperimentSpecsWriter =
          writeHtml "<td colspan='2'>"
          writeHtml "<p align='center'>"
          writeHtmlText $ experimentSpecsNameText writer
-         writeHtml "</h4>"
+         writeHtml "</p>"
          writeHtml "</td>"
          writeHtml "</tr>"
          writeHtml "<tr>"
