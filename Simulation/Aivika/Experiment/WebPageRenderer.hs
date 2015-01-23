@@ -17,7 +17,7 @@ module Simulation.Aivika.Experiment.WebPageRenderer where
 import Control.Monad
 import Control.Monad.Trans
 
-import qualified System.IO.UTF8 as UTF8
+import System.IO
 import System.Directory
 import System.FilePath
 
@@ -76,8 +76,10 @@ instance ExperimentRendering (WebPageRenderer a) where
                                      reporterContext reporter) i
            file = combine path "index.html"
        ((), contents) <- runHtmlWriter html id
-       liftIO $ do
-         UTF8.writeFile file (contents [])
-         when (experimentVerbose e) $
-           do putStr "Generated file "
-              putStrLn file
+       liftIO $
+         withFile file WriteMode $ \h ->
+         do hSetEncoding h utf8
+            hPutStr h (contents [])
+            when (experimentVerbose e) $
+              do putStr "Generated file "
+                 putStrLn file

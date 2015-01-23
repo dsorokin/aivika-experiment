@@ -44,12 +44,11 @@ library
                      Simulation.Aivika.Experiment.WebPageRenderer
                      Simulation.Aivika.Experiment.FileRenderer
                      
-    build-depends:   base >= 3 && < 6,
+    build-depends:   base >= 4.2 && < 6,
                      mtl >= 1.1.0.2,
                      containers >= 0.4.0.0,
                      directory >= 1.1.0.2,
                      filepath >= 1.3.0.0,
-                     utf8-string >= 0.3.7,
                      split >= 0.2.2,
                      network-uri >= 2.6,
                      parallel-io >= 0.3.2.1,
