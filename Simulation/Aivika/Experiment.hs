@@ -25,6 +25,7 @@ module Simulation.Aivika.Experiment
         module Simulation.Aivika.Experiment.ExperimentSpecsWriter,
         module Simulation.Aivika.Experiment.ExperimentWriter,
         module Simulation.Aivika.Experiment.FinalTableView,
+        module Simulation.Aivika.Experiment.InfoView,
         module Simulation.Aivika.Experiment.Utils,
         module Simulation.Aivika.Experiment.WebPageRenderer,
         module Simulation.Aivika.Experiment.FileRenderer) where
@@ -42,6 +43,7 @@ import Simulation.Aivika.Experiment.ExperimentSpecsView
 import Simulation.Aivika.Experiment.ExperimentSpecsWriter
 import Simulation.Aivika.Experiment.ExperimentWriter
 import Simulation.Aivika.Experiment.FinalTableView
+import Simulation.Aivika.Experiment.InfoView
 import Simulation.Aivika.Experiment.Utils
 import Simulation.Aivika.Experiment.WebPageRenderer
 import Simulation.Aivika.Experiment.FileRenderer
