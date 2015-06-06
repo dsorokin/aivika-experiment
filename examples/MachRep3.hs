@@ -46,6 +46,7 @@ experiment =
 generators :: [WebPageGenerator a]
 generators =
   [outputView defaultExperimentSpecsView,
+   outputView defaultInfoView,
    outputView $ defaultLastValueView {
      lastValueSeries = resultByName "x" },
    outputView $ defaultTimingStatsView {
