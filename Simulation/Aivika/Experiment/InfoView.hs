@@ -22,6 +22,7 @@ import Control.Concurrent.MVar
 
 import Data.IORef
 import Data.Maybe
+import Data.Monoid
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
