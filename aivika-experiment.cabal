@@ -1,5 +1,5 @@
 name:            aivika-experiment
-version:         4.0.3
+version:         4.0.4
 synopsis:        Simulation experiments for the Aivika library
 description:
     This package allows defining simulation experiments for the Aivika
