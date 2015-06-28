@@ -59,31 +59,22 @@ experiment =
     experimentDescription = "Model Linear Array as described in " ++
                             "the examples included in Berkeley-Madonna." }
 
+t = resultByName "t"
+m = resultByName "m"
+c = resultByName "c"
+
 generators :: [WebPageGenerator a]
 generators =
   [outputView defaultExperimentSpecsView,
    outputView $ defaultTableView {
-     tableSeries =
-        resultByName "t" <>
-        resultByName "m" <>
-        resultByName "c" },
+     tableSeries = t <> m <> c },
    outputView $ defaultFinalTableView {
-     finalTableSeries =
-        resultByName "m" <>
-        resultByName "c" },
+     finalTableSeries = m <> c },
    outputView $ defaultLastValueView {
-     lastValueSeries =
-        resultByName "t" <>
-        resultByName "m" <>
-        resultByName "c" },
+     lastValueSeries = t <> m <> c },
    outputView $ defaultTimingStatsView {
-     timingStatsSeries =
-        resultByName "t" <>
-        resultByName "m" <>
-        resultByName "c" },
+     timingStatsSeries = t <> m <> c },
    outputView $ defaultFinalStatsView {
-     finalStatsSeries =
-        resultByName "m" <>
-        resultByName "c" } ]
+     finalStatsSeries = m <> c } ]
 
 main = runExperiment experiment generators (WebPageRenderer ()) (model 51)

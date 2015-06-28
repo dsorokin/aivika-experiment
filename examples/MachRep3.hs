@@ -43,20 +43,23 @@ experiment =
     experimentRunCount = 3,
     experimentDescription = description }
 
+x = resultByName "x"
+t = resultByName "t"
+
 generators :: [WebPageGenerator a]
 generators =
   [outputView defaultExperimentSpecsView,
    outputView defaultInfoView,
    outputView $ defaultLastValueView {
-     lastValueSeries = resultByName "x" },
+     lastValueSeries = x },
    outputView $ defaultTimingStatsView {
-     timingStatsSeries = resultByName "x" },
+     timingStatsSeries = x },
    outputView $ defaultFinalStatsView {
-     finalStatsSeries = resultByName "x" },
+     finalStatsSeries = x },
    outputView $ defaultTableView {
-     tableSeries = resultByName "x" }, 
+     tableSeries = x }, 
    outputView $ defaultFinalTableView {
-     finalTableSeries = resultByName "x" } ]
+     finalTableSeries = x } ]
 
 model :: Simulation Results
 model =
