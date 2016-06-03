@@ -2,12 +2,14 @@ name:            aivika-experiment
 version:         4.0.3
 synopsis:        Simulation experiments for the Aivika library
 description:
-    This package allows defining simulation experiments for the Aivika
+    This package allows defining simulation experiments for the aivika [1]
     package. Such experiments define in declarative manner what should be
     simulated and in which view the simulation results should be 
-    generated. It can be charts, tables and so on.
+    generated. It can return charts, tables and so on.
     .
     The library is extensible and you can add new views for the results.
+    .
+    \[1] <http://hackage.haskell.org/package/aivika>
     .
 category:        Simulation
 license:         BSD3
