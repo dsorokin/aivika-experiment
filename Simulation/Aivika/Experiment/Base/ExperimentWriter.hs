@@ -1,19 +1,20 @@
 
 -- |
--- Module     : Simulation.Aivika.Experiment.ExperimentWriter
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.ExperimentWriter
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- It defines the 'Exp' monad that allows providing computation with
 -- an ability to resolve file paths.
 --
-module Simulation.Aivika.Experiment.ExperimentWriter
+module Simulation.Aivika.Experiment.Base.ExperimentWriter
        (ExperimentWriter,
         runExperimentWriter,
         ExperimentFilePath(..),
+        experimentFilePath,
         resolveFilePath,
         expandFilePath,
         mapFilePath) where
@@ -22,6 +23,8 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.State
+import Control.Concurrent.MVar
+import Control.Exception
 
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -29,7 +32,7 @@ import qualified Data.Set as S
 import System.Directory
 import System.FilePath
 
-import Simulation.Aivika.Experiment.MRef
+import Simulation.Aivika.Trans.Exception
 import Simulation.Aivika.Experiment.Utils (replace)
   
 -- | Specifies the file name, unique or writable, which can be appended with extension if required.
@@ -40,6 +43,10 @@ data ExperimentFilePath = WritableFilePath FilePath
                           -- ^ The file which is always unique,
                           -- when an automatically generated suffix
                           -- is added to the name in case of need.
+
+-- | The default experiment file path.
+experimentFilePath :: ExperimentFilePath
+experimentFilePath = UniqueFilePath "experiment"
                 
 -- | Resolve the file path relative to the specified directory passed in the first argument
 -- and taking into account a possible requirement to have an unique file name.
@@ -57,7 +64,7 @@ resolveFilePath dir (UniqueFilePath path)   =
            if f1 || f2
              then loop y' (i + 1)
              else do n' <- liftIO $
-                           modifyMRef r $ \s ->
+                           modifyMVar r $ \s ->
                            if S.member n s
                            then return (s, Nothing)
                            else return (S.insert n s, Just n)
@@ -86,7 +93,7 @@ mapFilePath f (UniqueFilePath path) = UniqueFilePath (f path)
 
 
 -- | Defines an 'IO' derived computation whithin which we can resolve the unique file paths.
-newtype ExperimentWriter a = ExperimentWriter (MRef (S.Set String) -> IO a)
+newtype ExperimentWriter a = ExperimentWriter (MVar (S.Set String) -> IO a)
 
 instance Functor ExperimentWriter where
 
@@ -122,8 +129,26 @@ instance MonadIO ExperimentWriter where
   {-# INLINE liftIO #-}
   liftIO m = ExperimentWriter $ \r -> liftIO m
 
+instance MonadException ExperimentWriter where
+
+  {-# INLINE catchComp #-}
+  catchComp (ExperimentWriter m) h =
+    ExperimentWriter $ \r ->
+    catch (m r) $ \e ->
+    let ExperimentWriter m' = h e in m' r
+
+  {-# INLINE finallyComp #-}
+  finallyComp (ExperimentWriter m) (ExperimentWriter m') =
+    ExperimentWriter $ \r ->
+    finally (m r) (m' r)
+
+  {-# INLINE throwComp #-}
+  throwComp e =
+    ExperimentWriter $ \r ->
+    throw e
+
 -- | Run the 'ExperimentWriter' computation.
 runExperimentWriter :: ExperimentWriter a -> IO a
 runExperimentWriter (ExperimentWriter m) =
-  do r <- newMRef S.empty
+  do r <- newMVar S.empty
      m r

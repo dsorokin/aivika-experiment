@@ -1,13 +1,13 @@
 
-{-# LANGUAGE TypeFamilies, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, FlexibleContexts #-}
 
 -- |
 -- Module     : Simulation.Aivika.Experiment.Types
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines the simulation experiments. They automate
 -- the process of generating and analyzing the results. Moreover,
@@ -22,19 +22,18 @@
 module Simulation.Aivika.Experiment.Types where
 
 import Control.Monad
-import Control.Monad.State
+import Control.Monad.Trans
+import Control.Exception
 import Control.Concurrent.ParallelIO.Local
 
 import Data.Maybe
 import Data.Monoid
-
-import System.Directory
-import System.FilePath
+import Data.Either
 
 import GHC.Conc (getNumCapabilities)
 
 import Simulation.Aivika
-import Simulation.Aivika.Experiment.ExperimentWriter
+import Simulation.Aivika.Trans.Exception
 
 -- | It defines the simulation experiment with the specified rendering backend and its bound data.
 data Experiment = 
@@ -46,8 +45,6 @@ data Experiment =
                -- ^ Specifies a localisation applied when rendering the experiment.
                experimentRunCount      :: Int,
                -- ^ How many simulation runs should be launched.
-               experimentDirectoryName :: ExperimentFilePath,
-               -- ^ The directory in which the output results should be saved.
                experimentTitle         :: String,
                -- ^ The experiment title.
                experimentDescription   :: String,
@@ -66,7 +63,6 @@ defaultExperiment =
                experimentTransform     = id,
                experimentLocalisation  = englishResultLocalisation,
                experimentRunCount      = 1,
-               experimentDirectoryName = UniqueFilePath "experiment",
                experimentTitle         = "Simulation Experiment",
                experimentDescription   = "",
                experimentVerbose       = True,
@@ -78,14 +74,32 @@ class ExperimentRendering r where
   -- | Defines a context used when rendering the experiment.
   data ExperimentContext r :: *
 
+  -- | Defines the experiment environment.
+  type ExperimentEnvironment r :: *
+
+  -- | Defines the experiment monad type.
+  type ExperimentMonad r :: * -> *
+
+  -- | Lift the experiment computation.
+  liftExperiment :: r -> ExperimentMonad r a -> IO a
+
+  -- | Prepare before rendering the experiment.
+  prepareExperiment :: Experiment -> r -> ExperimentMonad r (ExperimentEnvironment r)
+
   -- | Render the experiment after the simulation is finished, for example,
   -- creating the @index.html@ file in the specified directory.
-  renderExperiment :: Experiment -> r -> [ExperimentReporter r] -> FilePath -> ExperimentWriter ()
+  renderExperiment :: Experiment -> r -> [ExperimentReporter r] -> ExperimentEnvironment r -> ExperimentMonad r ()
+
+  -- | It is called when the experiment has been completed.
+  onExperimentCompleted :: Experiment -> r -> ExperimentEnvironment r -> ExperimentMonad r () 
+
+  -- | It is called when the experiment rendering has failed.
+  onExperimentFailed :: Exception e => Experiment -> r -> ExperimentEnvironment r -> e -> ExperimentMonad r ()
 
 -- | This is a generator of the reporter with the specified rendering backend.                     
 data ExperimentGenerator r = 
-  ExperimentGenerator { generateReporter :: Experiment -> r -> FilePath -> ExperimentWriter (ExperimentReporter r)
-                        -- ^ Generate a reporter bound up with the specified directory.
+  ExperimentGenerator { generateReporter :: Experiment -> r -> ExperimentEnvironment r -> ExperimentMonad r (ExperimentReporter r)
+                        -- ^ Generate a reporter.
                       }
 
 -- | Defines a view in which the simulation results should be saved.
@@ -106,17 +120,14 @@ data ExperimentData =
 
 -- | Defines what creates the simulation reports by the specified renderer.
 data ExperimentReporter r =
-  ExperimentReporter { reporterInitialise :: ExperimentWriter (),
+  ExperimentReporter { reporterInitialise :: ExperimentMonad r (),
                        -- ^ Initialise the reporting before 
                        -- the simulation runs are started.
-                       reporterFinalise   :: ExperimentWriter (),
+                       reporterFinalise   :: ExperimentMonad r (),
                        -- ^ Finalise the reporting after
                        -- all simulation runs are finished.
-                       reporterSimulate   :: ExperimentData -> Event DisposableEvent,
-                       -- ^ Start the simulation run in the start time
-                       -- and return a finalizer that will be called 
-                       -- in the stop time after the last signal is 
-                       -- triggered and processed.
+                       reporterSimulate   :: ExperimentData -> Composite (),
+                       -- ^ Start the simulation run in the start time.
                        reporterContext    :: ExperimentContext r
                        -- ^ Return a context used by the renderer.
                      }
@@ -124,7 +135,10 @@ data ExperimentReporter r =
 -- | Run the simulation experiment sequentially. For example, 
 -- it can be a Monte-Carlo simulation dependentent on the external
 -- 'Parameter' values.
-runExperiment :: ExperimentRendering r
+runExperiment :: (ExperimentRendering r,
+                  Monad (ExperimentMonad r),
+                  MonadIO (ExperimentMonad r),
+                  MonadException (ExperimentMonad r))
                  => Experiment
                  -- ^ the simulation experiment to run
                  -> [ExperimentGenerator r]
@@ -133,8 +147,10 @@ runExperiment :: ExperimentRendering r
                  -- ^ the rendering backend
                  -> Simulation Results
                  -- ^ the simulation results received from the model
-                 -> IO ()
-runExperiment = runExperimentWithExecutor sequence_
+                 -> IO (Either SomeException ())
+{-# INLINABLE runExperiment #-}
+runExperiment e generators r simulation =
+  runExperimentWithExecutor sequence_ e generators r simulation
   
 -- | Run the simulation experiment in parallel. 
 --
@@ -148,7 +164,10 @@ runExperiment = runExperimentWithExecutor sequence_
 -- threads directly with help of 'experimentNumCapabilities',
 -- although the real number of parallel threads can depend on many
 -- factors.
-runExperimentParallel :: ExperimentRendering r
+runExperimentParallel :: (ExperimentRendering r,
+                          Monad (ExperimentMonad r),
+                          MonadIO (ExperimentMonad r),
+                          MonadException (ExperimentMonad r))
                          => Experiment
                          -- ^ the simulation experiment to run
                          -> [ExperimentGenerator r]
@@ -157,16 +176,22 @@ runExperimentParallel :: ExperimentRendering r
                          -- ^ the rendering backend
                          -> Simulation Results
                          -- ^ the simulation results received from the model
-                         -> IO ()
-runExperimentParallel e = runExperimentWithExecutor executor e 
-  where executor tasks =
-          do n <- experimentNumCapabilities e
-             withPool n $ \pool ->
-               parallel_ pool tasks
+                         -> IO (Either SomeException ())
+{-# INLINABLE runExperimentParallel #-}
+runExperimentParallel e generators r simulation =
+  do x <- runExperimentWithExecutor executor e generators r simulation
+     return (x >> return ())
+       where executor tasks =
+               do n <- experimentNumCapabilities e
+                  withPool n $ \pool ->
+                    parallel_ pool tasks
                         
 -- | Run the simulation experiment with the specified executor.
-runExperimentWithExecutor :: ExperimentRendering r
-                             => ([IO ()] -> IO ())
+runExperimentWithExecutor :: (ExperimentRendering r,
+                              Monad (ExperimentMonad r),
+                              MonadIO (ExperimentMonad r),
+                              MonadException (ExperimentMonad r))
+                             => ([IO ()] -> IO a)
                              -- ^ an executor that allows parallelizing the simulation if required
                              -> Experiment
                              -- ^ the simulation experiment to run
@@ -176,45 +201,44 @@ runExperimentWithExecutor :: ExperimentRendering r
                              -- ^ the rendering backend
                              -> Simulation Results
                              -- ^ the simulation results received from the model
-                             -> IO ()
+                             -> IO (Either SomeException a)
+{-# INLINABLE runExperimentWithExecutor #-}
 runExperimentWithExecutor executor e generators r simulation =
-  runExperimentWriter $
+  liftExperiment r $
   do let specs      = experimentSpecs e
          runCount   = experimentRunCount e
-         dirName    = experimentDirectoryName e
-     path <- resolveFilePath "" dirName
-     liftIO $ do
-       when (experimentVerbose e) $
-         do putStr "Updating directory " 
-            putStrLn path
-       createDirectoryIfMissing True path
-     reporters <- mapM (\x -> generateReporter x e r path)
-                  generators
-     forM_ reporters reporterInitialise
-     let simulate :: Simulation ()
-         simulate =
-           do signals <- newResultPredefinedSignals
-              results <- simulation
-              let d = ExperimentData { experimentResults = experimentTransform e results,
-                                       experimentPredefinedSignals = signals }
-              fs <- runDynamicsInStartTime $
-                    runEventWith EarlierEvents $
-                    forM reporters $ \reporter ->
-                    reporterSimulate reporter d
-              let m1 =
-                    runEventInStopTime $
-                    return ()
-                  m2 =
-                    runEventInStopTime $
-                    disposeEvent $ mconcat fs
-                  mh (SimulationException e') =
-                    when (experimentVerbose e) $
-                    liftIO $
-                    do putStr "A simulation exception has been raised when running: " 
-                       putStrLn $ show e'
-              finallySimulation (catchSimulation m1 mh) m2
-     liftIO $
-       executor $ runSimulations simulate specs runCount
-     forM_ reporters reporterFinalise
-     renderExperiment e r reporters path
-     return ()
+     env <- prepareExperiment e r
+     let c1 =
+           do reporters <- mapM (\x -> generateReporter x e r env)
+                           generators
+              forM_ reporters reporterInitialise
+              let simulate :: Simulation ()
+                  simulate =
+                    do signals <- newResultPredefinedSignals
+                       results <- simulation
+                       let d = ExperimentData { experimentResults = experimentTransform e results,
+                                                experimentPredefinedSignals = signals }
+                       ((), fs) <- runDynamicsInStartTime $
+                                   runEventWith EarlierEvents $
+                                   flip runComposite mempty $
+                                   forM_ reporters $ \reporter ->
+                                   reporterSimulate reporter d
+                       let m1 =
+                             runEventInStopTime $
+                             return ()
+                           m2 =
+                             runEventInStopTime $
+                             disposeEvent fs
+                           mh (SimulationAbort e') =
+                             return ()
+                       finallySimulation (catchSimulation m1 mh) m2
+              a <- liftIO $
+                executor $ runSimulations simulate specs runCount
+              forM_ reporters reporterFinalise
+              renderExperiment e r reporters env
+              onExperimentCompleted e r env
+              return (Right a)
+         ch z@(SomeException e') =
+           do onExperimentFailed e r env e'
+              return (Left z)
+     catchComp c1 ch

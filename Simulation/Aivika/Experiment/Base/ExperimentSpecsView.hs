@@ -2,18 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.ExperimentSpecsView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.ExperimentSpecsView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'ExperimentSpecsView' that shows the 
 -- experiment specs.
 --
 
-module Simulation.Aivika.Experiment.ExperimentSpecsView 
+module Simulation.Aivika.Experiment.Base.ExperimentSpecsView 
        (ExperimentSpecsView(..),
         defaultExperimentSpecsView) where
 
@@ -23,10 +23,10 @@ import Control.Monad.Trans
 import Data.Monoid
 
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.ExperimentSpecsWriter
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.ExperimentSpecsWriter
 
 -- | Defines the 'View' that shows the experiment specs.
 data ExperimentSpecsView =

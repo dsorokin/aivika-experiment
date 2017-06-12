@@ -2,17 +2,17 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.Types
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.WebPageRenderer
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- It defines a renderer that creates a web page when running the simulation experiment.
 --
 
-module Simulation.Aivika.Experiment.WebPageRenderer where
+module Simulation.Aivika.Experiment.Base.WebPageRenderer where
 
 import Control.Monad
 import Control.Monad.Trans
@@ -22,13 +22,15 @@ import System.Directory
 import System.FilePath
 
 import Simulation.Aivika
+import Simulation.Aivika.Trans.Exception
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
 
 -- | It defines the web page renderer for simulation 'Experiment'. 
-data WebPageRenderer a = WebPageRenderer a
-                         -- ^ A renderer that depends on the provided parameter.
+data WebPageRenderer a = WebPageRenderer a ExperimentFilePath
+                         -- ^ A renderer that depends on the provided parameter and
+                         -- a directory path, where the simulation results are saved in.
 
 -- | It replies to the requests made by the web page renderer.
 data WebPageWriter =
@@ -50,7 +52,7 @@ data WebPageWriter =
 -- | A convenient type synonym for describing a web page generator.
 type WebPageGenerator a = ExperimentGenerator (WebPageRenderer a)
 
--- | Rending a web page with results when running the simulation experiment.
+-- | Rendering a web page with results when running the simulation experiment.
 instance ExperimentRendering (WebPageRenderer a) where
 
   -- | A web page context.
@@ -58,6 +60,23 @@ instance ExperimentRendering (WebPageRenderer a) where
     WebPageContext { runWebPageContext :: WebPageWriter
                      -- ^ Run the web page context.
                    }
+
+  -- | A web page environment.
+  type ExperimentEnvironment (WebPageRenderer a) = FilePath
+
+  -- | A web page rendering monad.
+  type ExperimentMonad (WebPageRenderer a) = ExperimentWriter
+
+  liftExperiment r = runExperimentWriter
+
+  prepareExperiment e (WebPageRenderer _ path0) =
+    do path <- resolveFilePath "" path0
+       liftIO $ do
+         when (experimentVerbose e) $
+           do putStr "Updating directory " 
+              putStrLn path
+         createDirectoryIfMissing True path
+       return path
 
   renderExperiment e r reporters path = 
     do let html :: HtmlWriter ()
@@ -83,3 +102,7 @@ instance ExperimentRendering (WebPageRenderer a) where
             when (experimentVerbose e) $
               do putStr "Generated file "
                  putStrLn file
+
+  onExperimentCompleted e r path = return ()
+
+  onExperimentFailed e r path e' = throwComp e'

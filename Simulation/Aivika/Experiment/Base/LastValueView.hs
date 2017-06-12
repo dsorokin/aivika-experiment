@@ -2,18 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.LastValueView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.LastValueView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'LastValueView' that shows the last values
 -- for the simulation variables.
 --
 
-module Simulation.Aivika.Experiment.LastValueView 
+module Simulation.Aivika.Experiment.Base.LastValueView 
        (LastValueView(..),
         defaultLastValueView) where
 
@@ -26,9 +26,9 @@ import Data.Maybe
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 -- | Defines the 'View' that shows the last values of the simulation
@@ -59,7 +59,7 @@ data LastValueView =
 -- | This is the default view.
 defaultLastValueView :: LastValueView
 defaultLastValueView =  
-  LastValueView { lastValueTitle       = "The Last Values",
+  LastValueView { lastValueTitle       = "Last Values",
                   lastValueRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
                   lastValueDescription = "It shows the values in the final time point(s).",
                   lastValueFormatter   = id,
@@ -98,7 +98,7 @@ newLastValues view exp =
                                  lastValueMap        = m }
        
 -- | Get the last values during the simulation.
-simulateLastValues :: LastValueViewState -> ExperimentData -> Event DisposableEvent
+simulateLastValues :: LastValueViewState -> ExperimentData -> Composite ()
 simulateLastValues st expdata =
   do let view    = lastValueView st
          rs      = lastValueSeries view $
@@ -108,7 +108,7 @@ simulateLastValues st expdata =
          signals = experimentPredefinedSignals expdata
          signal  = resultSignalInStopTime signals
      i <- liftParameter simulationIndex
-     handleSignal signal $ \t ->
+     handleSignalComposite signal $ \t ->
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM exts $ \ext ->
             do x <- resultValueData ext

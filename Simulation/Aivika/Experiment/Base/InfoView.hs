@@ -2,17 +2,17 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.InfoView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.InfoView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'InfoView' that shows the description of series.
 --
 
-module Simulation.Aivika.Experiment.InfoView
+module Simulation.Aivika.Experiment.Base.InfoView
        (InfoView(..), 
         defaultInfoView) where
 
@@ -26,10 +26,10 @@ import Data.Monoid
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.MRef
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Concurrent.MVar
 
 -- | Defines the 'View' that shows the description of series.
 data InfoView =
@@ -73,7 +73,7 @@ instance ExperimentView InfoView (WebPageRenderer a) where
 data InfoViewState =
   InfoViewState { infoView       :: InfoView,
                   infoExperiment :: Experiment,
-                  infoResults    :: MRef (Maybe InfoResults) }
+                  infoResults    :: MVar (Maybe InfoResults) }
 
 -- | The information table.
 data InfoResults =
@@ -83,7 +83,7 @@ data InfoResults =
 -- | Create a new state of the view.
 newInfo :: InfoView -> Experiment -> FilePath -> ExperimentWriter InfoViewState
 newInfo view exp dir =
-  do r <- liftIO $ newMRef Nothing
+  do r <- liftIO $ newMVar Nothing
      return InfoViewState { infoView       = view,
                             infoExperiment = exp,
                             infoResults    = r }
@@ -112,7 +112,7 @@ requireInfoResults st sources =
   let view = infoView st
       loc  = infoLocalisation view
       exp  = infoExperiment st
-  in maybeWriteMRef (infoResults st)
+  in maybePutMVar (infoResults st)
      (newInfoResults sources loc exp) $ \results ->
   do let xs =
            flip map sources $ \source ->
@@ -131,7 +131,7 @@ requireInfoResults st sources =
        else return results
        
 -- | Simulate the specified series.
-simulateInfo :: InfoViewState -> ExperimentData -> Event DisposableEvent
+simulateInfo :: InfoViewState -> ExperimentData -> Composite ()
 simulateInfo st expdata =
   do let view    = infoView st
          rs      = infoSeries view $
@@ -139,13 +139,13 @@ simulateInfo st expdata =
                    experimentResults expdata
          sources = resultSourceList rs
      liftIO $ requireInfoResults st sources
-     return mempty
+     return ()
 
 -- | Get the HTML code.     
 infoHtml :: InfoViewState -> Int -> HtmlWriter ()
 infoHtml st index =
   do header st index
-     results <- liftIO $ readMRef (infoResults st)
+     results <- liftIO $ readMVar (infoResults st)
      case results of
        Nothing -> return ()
        Just results ->

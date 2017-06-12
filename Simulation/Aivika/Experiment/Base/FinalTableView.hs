@@ -2,19 +2,19 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.FinalTableView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.FinalTableView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'FinalTableView' that saves the simulation
 -- results in the final time points for all simulation runs in
 -- the CSV file.
 --
 
-module Simulation.Aivika.Experiment.FinalTableView
+module Simulation.Aivika.Experiment.Base.FinalTableView
        (FinalTableView(..), 
         defaultFinalTableView) where
 
@@ -31,11 +31,11 @@ import System.FilePath
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.FileRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.MRef
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.FileRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Concurrent.MVar
 
 -- | Defines the 'View' that saves the simulation 
 -- results in the final time points for all 
@@ -129,18 +129,18 @@ data FinalTableViewState =
                         finalTableExperiment :: Experiment,
                         finalTableDir        :: FilePath, 
                         finalTableFile       :: IORef (Maybe FilePath),
-                        finalTableResults    :: MRef (Maybe FinalTableResults) }
+                        finalTableResults    :: MVar (Maybe FinalTableResults) }
 
 -- | The table results.
 data FinalTableResults =
   FinalTableResults { finalTableNames  :: [String],
-                      finalTableValues :: MRef (M.Map Int [String]) }
+                      finalTableValues :: MVar (M.Map Int [String]) }
   
 -- | Create a new state of the view.
 newFinalTable :: FinalTableView -> Experiment -> FilePath -> ExperimentWriter FinalTableViewState
 newFinalTable view exp dir =
   do f <- liftIO $ newIORef Nothing
-     r <- liftIO $ newMRef Nothing
+     r <- liftIO $ newMVar Nothing
      return FinalTableViewState { finalTableView       = view,
                                   finalTableExperiment = exp,
                                   finalTableDir        = dir, 
@@ -150,21 +150,21 @@ newFinalTable view exp dir =
 -- | Create new table results.
 newFinalTableResults :: [String] -> Experiment -> IO FinalTableResults
 newFinalTableResults names exp =
-  do values <- newMRef M.empty 
+  do values <- newMVar M.empty 
      return FinalTableResults { finalTableNames  = names,
                                 finalTableValues = values }
 
 -- | Require to return unique final tables results associated with the specified state. 
 requireFinalTableResults :: FinalTableViewState -> [String] -> IO FinalTableResults
 requireFinalTableResults st names =
-  maybeWriteMRef (finalTableResults st)
+  maybePutMVar (finalTableResults st)
   (newFinalTableResults names (finalTableExperiment st)) $ \results ->
   if (names /= finalTableNames results)
   then error "Series with different names are returned for different runs: requireFinalTableResults"
   else return results
        
 -- | Simulation of the specified series.
-simulateFinalTable :: FinalTableViewState -> ExperimentData -> Event DisposableEvent
+simulateFinalTable :: FinalTableViewState -> ExperimentData -> Composite ()
 simulateFinalTable st expdata =
   do let view    = finalTableView st
          rs      = finalTableSeries view $
@@ -178,10 +178,10 @@ simulateFinalTable st expdata =
          predicate = finalTablePredicate view
      results <- liftIO $ requireFinalTableResults st names
      let values = finalTableValues results 
-     handleSignal signal $ \_ ->
+     handleSignalComposite signal $ \_ ->
        do xs <- mapM resultValueData exts
           i  <- liftParameter simulationIndex
-          liftIO $ modifyMRef_ values $ return . M.insert i xs
+          liftIO $ modifyMVar_ values $ return . M.insert i xs
      
 -- | Save the results in the CSV file after the simulation is complete.
 finaliseFinalTable :: FinalTableViewState -> ExperimentWriter ()
@@ -191,13 +191,13 @@ finaliseFinalTable st =
          formatter = finalTableFormatter view
          title     = finalTableTitle view
          separator = finalTableSeparator view
-     results <- liftIO $ readMRef $ finalTableResults st
+     results <- liftIO $ readMVar $ finalTableResults st
      case results of
        Nothing -> return ()
        Just results ->
          do let names  = finalTableNames results
                 values = finalTableValues results
-            m <- liftIO $ readMRef values 
+            m <- liftIO $ readMVar values 
             file <- resolveFilePath (finalTableDir st) $
                     mapFilePath (flip replaceExtension ".csv") $
                     expandFilePath (finalTableFileName $ finalTableView st) $

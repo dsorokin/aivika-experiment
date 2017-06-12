@@ -2,18 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.FinalStatsView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.FinalStatsView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
--- The module defines 'FinalStatsView' gathers the statistics
+-- The module defines 'FinalStatsView' that gathers the statistics
 -- in the final time points for different simulation runs.
 --
 
-module Simulation.Aivika.Experiment.FinalStatsView
+module Simulation.Aivika.Experiment.Base.FinalStatsView
        (FinalStatsView(..), 
         defaultFinalStatsView) where
 
@@ -26,11 +26,11 @@ import Data.Maybe
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.SamplingStatsWriter
-import Simulation.Aivika.Experiment.MRef
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Base.SamplingStatsWriter
+import Simulation.Aivika.Experiment.Concurrent.MVar
 
 -- | Defines the 'View' that gathers the statistics
 -- in the final time points.
@@ -53,7 +53,7 @@ data FinalStatsView =
 -- | The default statistics view.  
 defaultFinalStatsView :: FinalStatsView
 defaultFinalStatsView = 
-  FinalStatsView { finalStatsTitle       = "Final Statistics",
+  FinalStatsView { finalStatsTitle       = "Final Statistics Based on Observations",
                    finalStatsDescription = "Statistics is gathered in final time points for all runs.",
                    finalStatsWriter      = defaultSamplingStatsWriter,
                    finalStatsPredicate   = return True,
@@ -79,17 +79,17 @@ instance ExperimentView FinalStatsView (WebPageRenderer a) where
 data FinalStatsViewState =
   FinalStatsViewState { finalStatsView       :: FinalStatsView,
                         finalStatsExperiment :: Experiment,
-                        finalStatsResults    :: MRef (Maybe FinalStatsResults) }
+                        finalStatsResults    :: MVar (Maybe FinalStatsResults) }
 
 -- | The statistics results.
 data FinalStatsResults =
   FinalStatsResults { finalStatsNames  :: [String],
-                      finalStatsValues :: [IORef (SamplingStats Double)] }
+                      finalStatsValues :: [MVar (SamplingStats Double)] }
   
 -- | Create a new state of the view.
 newFinalStats :: FinalStatsView -> Experiment -> FilePath -> ExperimentWriter FinalStatsViewState
 newFinalStats view exp dir =
-  do r <- liftIO $ newMRef Nothing
+  do r <- liftIO $ newMVar Nothing
      return FinalStatsViewState { finalStatsView       = view,
                                   finalStatsExperiment = exp,
                                   finalStatsResults    = r }
@@ -97,21 +97,21 @@ newFinalStats view exp dir =
 -- | Create new statistics results.
 newFinalStatsResults :: [String] -> Experiment -> IO FinalStatsResults
 newFinalStatsResults names exp =
-  do values <- forM names $ \_ -> liftIO $ newIORef emptySamplingStats
+  do values <- forM names $ \_ -> liftIO $ newMVar emptySamplingStats
      return FinalStatsResults { finalStatsNames  = names,
                                 finalStatsValues = values }
 
 -- | Require to return unique final statistics results associated with the specified state. 
 requireFinalStatsResults :: FinalStatsViewState -> [String] -> IO FinalStatsResults
 requireFinalStatsResults st names =
-  maybeWriteMRef (finalStatsResults st)
+  maybePutMVar (finalStatsResults st)
   (newFinalStatsResults names (finalStatsExperiment st)) $ \results ->
   if (names /= finalStatsNames results)
   then error "Series with different names are returned for different runs: requireFinalStatsResults"
   else return results
        
 -- | Simulate the specified series.
-simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Event DisposableEvent
+simulateFinalStats :: FinalStatsViewState -> ExperimentData -> Composite ()
 simulateFinalStats st expdata =
   do let view    = finalStatsView st
          rs      = finalStatsSeries view $
@@ -125,19 +125,19 @@ simulateFinalStats st expdata =
          predicate = finalStatsPredicate view
      results <- liftIO $ requireFinalStatsResults st names
      let values = finalStatsValues results 
-     handleSignal signal $ \_ ->
+     handleSignalComposite signal $ \_ ->
        forM_ (zip exts values) $ \(ext, value) ->
        do x <- resultValueData ext
           liftIO $
-            do y <- readIORef value
-               let y' = combineSamplingStatsEither x y
-               y' `seq` writeIORef value y'
+            modifyMVar_ value $ \y ->
+            let y' = combineSamplingStatsEither x y
+            in y' `seq` return y'
 
 -- | Get the HTML code.     
 finalStatsHtml :: FinalStatsViewState -> Int -> HtmlWriter ()
 finalStatsHtml st index =
   do header st index
-     results <- liftIO $ readMRef (finalStatsResults st)
+     results <- liftIO $ readMVar (finalStatsResults st)
      case results of
        Nothing -> return ()
        Just results ->
@@ -146,7 +146,7 @@ finalStatsHtml st index =
                 writer = finalStatsWriter (finalStatsView st)
                 write  = samplingStatsWrite writer
             forM_ (zip names values) $ \(name, value) ->
-              do stats <- liftIO $ readIORef value
+              do stats <- liftIO $ readMVar value
                  write writer name stats
 
 header :: FinalStatsViewState -> Int -> HtmlWriter ()

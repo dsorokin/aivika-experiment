@@ -1,22 +1,22 @@
 
 -- |
--- Module     : Simulation.Aivika.Experiment.TimingStatsWriter
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.TimingStatsWriter
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'TimingStatsWriter' that knows how to write
 -- the timing statistics in HTML.
 --
 
-module Simulation.Aivika.Experiment.TimingStatsWriter 
+module Simulation.Aivika.Experiment.Base.TimingStatsWriter 
        (TimingStatsWriter(..),
         defaultTimingStatsWriter) where
 
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
 
 import Simulation.Aivika.Statistics
 

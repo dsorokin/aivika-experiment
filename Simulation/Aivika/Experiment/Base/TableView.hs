@@ -2,18 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.TableView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.TableView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'TableView' that saves the simulation
 -- results in the CSV file(s).
 --
 
-module Simulation.Aivika.Experiment.TableView 
+module Simulation.Aivika.Experiment.Base.TableView 
        (TableView(..), 
         defaultTableView) where
 
@@ -30,10 +30,10 @@ import System.FilePath
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.FileRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.FileRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 -- | Defines the 'View' that saves the simulation results
@@ -167,7 +167,7 @@ newTable view exp dir =
                              tableMap          = m }
        
 -- | Write the tables during the simulation.
-simulateTable :: TableViewState -> ExperimentData -> Event DisposableEvent
+simulateTable :: TableViewState -> ExperimentData -> Composite ()
 simulateTable st expdata =
   do let view    = tableView st
          rs      = tableSeries view $
@@ -191,7 +191,7 @@ simulateTable st expdata =
                  hPutStr h separator
                hPutStr h $ show $ resultValueName ext
           hPutStrLn h ""
-     d1 <- handleSignal signal $ \t ->
+     handleSignalComposite signal $ \t ->
        do p <- predicate
           when p $
             do forM_ (zip [0..] exts) $ \(column, ext) ->  -- write the row
@@ -201,13 +201,12 @@ simulateTable st expdata =
                            hPutStr h separator
                          hPutStr h $ formatter x
                liftIO $ hPutStrLn h ""
-     let d2 =          
-           DisposableEvent $
-           liftIO $
-           do when (experimentVerbose $ tableExperiment st) $
-                putStr "Generated file " >> putStrLn f
-              hClose h  -- close the file
-     return $ d1 <> d2
+     disposableComposite $
+       DisposableEvent $
+       liftIO $
+       do when (experimentVerbose $ tableExperiment st) $
+            putStr "Generated file " >> putStrLn f
+          hClose h  -- close the file
      
 -- | Get the HTML code.     
 tableHtml :: TableViewState -> Int -> HtmlWriter ()     

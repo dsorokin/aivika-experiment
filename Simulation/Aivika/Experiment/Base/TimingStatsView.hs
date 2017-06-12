@@ -2,18 +2,18 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
--- Module     : Simulation.Aivika.Experiment.TimingStatsView
--- Copyright  : Copyright (c) 2012-2015, David Sorokin <david.sorokin@gmail.com>
+-- Module     : Simulation.Aivika.Experiment.Base.TimingStatsView
+-- Copyright  : Copyright (c) 2012-2017, David Sorokin <david.sorokin@gmail.com>
 -- License    : BSD3
 -- Maintainer : David Sorokin <david.sorokin@gmail.com>
 -- Stability  : experimental
--- Tested with: GHC 7.10.1
+-- Tested with: GHC 8.0.1
 --
 -- The module defines 'TimingStatsView' that shows the timing statistics
 -- for the variables for every simulation run separately.
 --
 
-module Simulation.Aivika.Experiment.TimingStatsView 
+module Simulation.Aivika.Experiment.Base.TimingStatsView 
        (TimingStatsView(..),
         defaultTimingStatsView) where
 
@@ -27,10 +27,10 @@ import Data.Monoid
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment.Types
-import Simulation.Aivika.Experiment.WebPageRenderer
-import Simulation.Aivika.Experiment.ExperimentWriter
-import Simulation.Aivika.Experiment.HtmlWriter
-import Simulation.Aivika.Experiment.TimingStatsWriter
+import Simulation.Aivika.Experiment.Base.WebPageRenderer
+import Simulation.Aivika.Experiment.Base.ExperimentWriter
+import Simulation.Aivika.Experiment.Base.HtmlWriter
+import Simulation.Aivika.Experiment.Base.TimingStatsWriter
 import Simulation.Aivika.Experiment.Utils (replace)
 
 -- | Defines the 'View' that shows the timing statistics
@@ -63,7 +63,7 @@ data TimingStatsView =
 -- | This is the default view.
 defaultTimingStatsView :: TimingStatsView
 defaultTimingStatsView =  
-  TimingStatsView { timingStatsTitle       = "Timing Statistics",
+  TimingStatsView { timingStatsTitle       = "Statistics for Time-Persistent Variables",
                     timingStatsRunTitle    = "$TITLE / Run $RUN_INDEX of $RUN_COUNT",
                     timingStatsDescription = "The statistical data are gathered in the time points.",
                     timingStatsWriter      = defaultTimingStatsWriter,
@@ -103,7 +103,7 @@ newTimingStats view exp =
                                    timingStatsMap        = m }
        
 -- | Get the timing statistics during the simulation.
-simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Event DisposableEvent
+simulateTimingStats :: TimingStatsViewState -> ExperimentData -> Composite ()
 simulateTimingStats st expdata =
   do let view    = timingStatsView st
          rs      = timingStatsSeries view $
@@ -117,18 +117,17 @@ simulateTimingStats st expdata =
          predicate = timingStatsPredicate view
      i <- liftParameter simulationIndex
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
-     ds <- forM exts $ \ext ->
+     forM_ exts $ \ext ->
        do stats <- liftIO $ newIORef emptyTimingStats
           let name = resultValueName ext
           liftIO $ modifyIORef r ((:) (name, stats))
-          handleSignal signal $ \_ ->
+          handleSignalComposite signal $ \_ ->
             do t <- liftDynamics time
                x <- resultValueData ext
                liftIO $
                  do y <- readIORef stats
                     let y' = addTimingStats t x y
                     y' `seq` writeIORef stats y'
-     return $ mconcat ds
      
 -- | Get the HTML code.     
 timingStatsHtml :: TimingStatsViewState -> Int -> HtmlWriter ()     
