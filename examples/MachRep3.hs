@@ -18,6 +18,7 @@ import Control.Monad.Trans
 
 import Simulation.Aivika
 import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Base
 
 meanUpTime = 1.0
 meanRepairTime = 0.5
@@ -119,4 +120,4 @@ model =
        [resultSource "x" "The proportion of up time" prop,
         resultSource "t" "Simulation time" time]
 
-main = runExperiment experiment generators (WebPageRenderer ()) model
+main = runExperiment experiment generators (WebPageRenderer () experimentFilePath) model

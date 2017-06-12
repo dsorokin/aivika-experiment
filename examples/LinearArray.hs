@@ -19,6 +19,7 @@ import qualified Data.Vector as V
 import Simulation.Aivika
 import Simulation.Aivika.SystemDynamics
 import Simulation.Aivika.Experiment
+import Simulation.Aivika.Experiment.Base
 
 specs = Specs { spcStartTime = 0, 
                 spcStopTime = 500, 
@@ -77,4 +78,4 @@ generators =
    outputView $ defaultFinalStatsView {
      finalStatsSeries = m <> c } ]
 
-main = runExperiment experiment generators (WebPageRenderer ()) (model 51)
+main = runExperiment experiment generators (WebPageRenderer () experimentFilePath) (model 51)
