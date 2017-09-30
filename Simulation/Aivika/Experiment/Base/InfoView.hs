@@ -39,10 +39,8 @@ data InfoView =
              -- ^ This is a text description used in HTML.
              infoTransform    :: ResultTransform,
              -- ^ The transform applied to the results before receiving series.
-             infoSeries       :: ResultTransform, 
+             infoSeries       :: ResultTransform
              -- ^ It defines the series for which the description is shown.
-             infoLocalisation :: ResultLocalisation
-             -- ^ It specifies the localisation.
            }
   
 -- | The default description view.  
@@ -51,8 +49,7 @@ defaultInfoView =
   InfoView { infoTitle        = "Information",
              infoDescription  = "It shows the information about simulation entities:",
              infoTransform    = id,
-             infoSeries       = id,
-             infoLocalisation = englishResultLocalisation }
+             infoSeries       = id }
 
 instance ExperimentView InfoView (WebPageRenderer a) where
   
@@ -95,11 +92,14 @@ newInfoResults sources loc exp =
            flip map sources $ \source ->
            case source of
              ResultItemSource (ResultItem x) ->
-               [(resultItemName x, loc $ resultItemId x)]
+               [(resultNameToTitle $ resultItemName x,
+                 localiseResultDescription loc $ resultItemId x)]
              ResultObjectSource x ->
-               [(resultObjectName x, loc $ resultObjectId x)]
+               [(resultNameToTitle $ resultObjectName x,
+                 localiseResultDescription loc $ resultObjectId x)]
              ResultVectorSource x ->
-               [(resultVectorName x, loc $ resultVectorId x)]
+               [(resultNameToTitle $ resultVectorName x,
+                 localiseResultDescription loc $ resultVectorId x)]
              ResultSeparatorSource x ->
                []
          (names, values) = unzip $ concat xs
@@ -110,19 +110,19 @@ newInfoResults sources loc exp =
 requireInfoResults :: InfoViewState -> [ResultSource] -> IO InfoResults
 requireInfoResults st sources =
   let view = infoView st
-      loc  = infoLocalisation view
       exp  = infoExperiment st
+      loc  = experimentLocalisation exp
   in maybePutMVar (infoResults st)
      (newInfoResults sources loc exp) $ \results ->
   do let xs =
            flip map sources $ \source ->
            case source of
              ResultItemSource (ResultItem x) ->
-               [resultItemName x]
+               [resultNameToTitle $ resultItemName x]
              ResultObjectSource x ->
-               [resultObjectName x]
+               [resultNameToTitle $ resultObjectName x]
              ResultVectorSource x ->
-               [resultVectorName x]
+               [resultNameToTitle $ resultVectorName x]
              ResultSeparatorSource x ->
                []
      let names = concat xs

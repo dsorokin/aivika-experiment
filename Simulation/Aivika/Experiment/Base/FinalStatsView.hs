@@ -117,11 +117,14 @@ simulateFinalStats st expdata =
          rs      = finalStatsSeries view $
                    finalStatsTransform view $
                    experimentResults expdata
+         loc     = localisePathResultTitle $
+                   experimentLocalisation $
+                   finalStatsExperiment st
          exts    = resultsToDoubleStatsEitherValues rs
          signals = experimentPredefinedSignals expdata
          signal  = filterSignalM (const predicate) $
                    resultSignalInStopTime signals
-         names   = map resultValueName exts
+         names   = map (loc . resultValueIdPath) exts
          predicate = finalStatsPredicate view
      results <- liftIO $ requireFinalStatsResults st names
      let values = finalStatsValues results 

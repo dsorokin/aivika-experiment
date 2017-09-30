@@ -104,6 +104,9 @@ simulateLastValues st expdata =
          rs      = lastValueSeries view $
                    lastValueTransform view $
                    experimentResults expdata
+         loc     = localisePathResultTitle $
+                   experimentLocalisation $
+                   lastValueExperiment st
          exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
          signal  = resultSignalInStopTime signals
@@ -112,7 +115,7 @@ simulateLastValues st expdata =
        do let r = fromJust $ M.lookup (i - 1) (lastValueMap st)
           output <- forM exts $ \ext ->
             do x <- resultValueData ext
-               return (resultValueName ext, x)
+               return (loc $ resultValueIdPath ext, x)
           liftIO $ writeIORef r output
      
 -- | Get the HTML code.     

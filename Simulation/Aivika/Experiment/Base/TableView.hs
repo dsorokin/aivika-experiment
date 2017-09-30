@@ -173,6 +173,9 @@ simulateTable st expdata =
          rs      = tableSeries view $
                    tableTransform view $
                    experimentResults expdata
+         loc     = localisePathResultTitle $
+                   experimentLocalisation $
+                   tableExperiment st
          exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
          signal  = pureResultSignal signals $
@@ -189,7 +192,7 @@ simulateTable st expdata =
        do forM_ (zip [0..] exts) $ \(column, ext) ->
             do when (column > 0) $ 
                  hPutStr h separator
-               hPutStr h $ show $ resultValueName ext
+               hPutStr h $ show $ loc $ resultValueIdPath ext
           hPutStrLn h ""
      handleSignalComposite signal $ \t ->
        do p <- predicate

@@ -109,6 +109,9 @@ simulateTimingStats st expdata =
          rs      = timingStatsSeries view $
                    timingStatsTransform view $
                    experimentResults expdata
+         loc     = localisePathResultTitle $
+                   experimentLocalisation $
+                   timingStatsExperiment st
          exts    = resultsToDoubleValues rs
          signals = experimentPredefinedSignals expdata
          signal  = filterSignalM (const predicate) $
@@ -119,7 +122,7 @@ simulateTimingStats st expdata =
      let r = fromJust $ M.lookup (i - 1) $ timingStatsMap st
      forM_ exts $ \ext ->
        do stats <- liftIO $ newIORef emptyTimingStats
-          let name = resultValueName ext
+          let name = loc $ resultValueIdPath ext
           liftIO $ modifyIORef r ((:) (name, stats))
           handleSignalComposite signal $ \_ ->
             do t <- liftDynamics time

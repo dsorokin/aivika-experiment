@@ -170,11 +170,14 @@ simulateFinalTable st expdata =
          rs      = finalTableSeries view $
                    finalTableTransform view $
                    experimentResults expdata
+         loc     = localisePathResultTitle $
+                   experimentLocalisation $
+                   finalTableExperiment st
          exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
          signal  = filterSignalM (const predicate) $
                    resultSignalInStopTime signals
-         names   = map resultValueName exts
+         names   = map (loc . resultValueIdPath) exts
          predicate = finalTablePredicate view
      results <- liftIO $ requireFinalTableResults st names
      let values = finalTableValues results 
