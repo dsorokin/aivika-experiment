@@ -7,7 +7,7 @@
 -- Stability  : experimental
 -- Tested with: GHC 8.0.1
 --
--- | This module computes the histogram by the 
+-- This module computes the histogram by the 
 -- specified data and strategy applied for such computing.
 --
 -- The code in this module is essentially based on the 
