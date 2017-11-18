@@ -43,6 +43,8 @@ data ExperimentSpecsWriter =
                           -- ^ Translated text \"the 2-nd order Runge-Kutta\".
                           experimentSpecsRungeKutta4Text :: String,
                           -- ^ Translated text \"the 4-th order Runge-Kutta\".
+                          experimentSpecsRungeKutta4bText :: String,
+                          -- ^ Translated text \"the 4-th order Runge-Kutta 3/8-rule\".
                           experimentSpecsFormatter     :: ShowS,
                           -- ^ The formatter of numbers.
                           experimentSpecsWrite :: ExperimentSpecsWriter
@@ -65,6 +67,7 @@ defaultExperimentSpecsWriter =
     experimentSpecsEulerText = "Euler's",
     experimentSpecsRungeKutta2Text = "the 2-nd order Runge-Kutta",
     experimentSpecsRungeKutta4Text = "the 4-th order Runge-Kutta",
+    experimentSpecsRungeKutta4bText = "the 4-th order Runge-Kutta 3/8-rule",
     experimentSpecsFormatter = id,
     experimentSpecsWrite = \writer exp ->
       do let format x = experimentSpecsFormatter writer x
@@ -129,3 +132,4 @@ methodName :: Method -> ExperimentSpecsWriter -> String
 methodName Euler       = experimentSpecsEulerText
 methodName RungeKutta2 = experimentSpecsRungeKutta2Text
 methodName RungeKutta4 = experimentSpecsRungeKutta4Text
+methodName RungeKutta4b = experimentSpecsRungeKutta4bText
