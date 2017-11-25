@@ -97,8 +97,10 @@ data TableView =
               -- when we can save data in the table.
               tableTransform   :: ResultTransform,
               -- ^ The transform applied to the results before receiving series.
-              tableSeries      :: ResultTransform 
+              tableSeries      :: ResultTransform, 
               -- ^ It defines the series to save in the CSV file(s).
+              tableSeriesGridSize :: Maybe Int
+              -- ^ The size of the grid, where the series data are saved.
             }
   
 -- | The default table view.  
@@ -113,7 +115,8 @@ defaultTableView =
               tableFormatter   = id,
               tablePredicate   = return True,
               tableTransform   = expandResults,
-              tableSeries      = id }
+              tableSeries      = id,
+              tableSeriesGridSize = Nothing }
   
 instance ExperimentView TableView (WebPageRenderer a) where
   
@@ -178,12 +181,20 @@ simulateTable st expdata =
                    tableExperiment st
          exts    = resultsToStringValues rs
          signals = experimentPredefinedSignals expdata
-         signal  = pureResultSignal signals $
-                   resultSignal rs
          separator = tableSeparator view
          formatter = tableFormatter view
          predicate = tablePredicate view
      i <- liftParameter simulationIndex
+     signal <-
+       case tableSeriesGridSize view of
+         Just m ->
+           liftEvent $
+           fmap (mapSignal $ const ()) $
+           newSignalInTimeGrid m
+         Nothing ->
+           return $
+           pureResultSignal signals $
+           resultSignal rs
      -- create a new file
      let f = fromJust $ M.lookup (i - 1) (tableMap st)
      h <- liftIO $ openFile f WriteMode

@@ -1,5 +1,5 @@
 name:            aivika-experiment
-version:         5.2
+version:         5.3
 synopsis:        Simulation experiments for the Aivika library
 description:
     This package allows defining simulation experiments based on the aivika [1]
