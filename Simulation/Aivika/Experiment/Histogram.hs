@@ -122,7 +122,7 @@ histBins size xs = [ (head l, length l) | l <- group (sort xs) ]
 -- | It "rounds" every number into the closest number below it 
 -- that is divisible by size.
 bin :: Double -> [Double] -> [Double]
-bin size xs @ [_] = xs
+bin size xs@[_] = xs
 bin size xs = map (\x -> size * fromIntegral (floor (x / size)) + size / 2) xs
 
 -- | Combine bins from different histograms (optimized version).
@@ -139,11 +139,11 @@ combineBins' xs = map (merging . sorting) $
         ordering  = sortBy  $ \(_, t1, _) (_, t2, _) -> compare t1 t2
         groupping = groupBy $ \(_, t1, _) (_, t2, _) -> t1 == t2
         sorting   = sortBy  $ \(i1, _, _) (i2, _, _) -> compare i1 i2
-        merging zs @ ((_, t, _) : _) = merging' zs t 1 []
+        merging zs@((_, t, _) : _) = merging' zs t 1 []
         merging' [] t k acc
           | k <= count = merging' [] t (k + 1) (0 : acc)
           | k > count  = (t, reverse acc)
-        merging' zs @ ((i, _, n) : xs) t k acc
+        merging' zs@((i, _, n) : xs) t k acc
           | i == k = merging' xs t (k + 1) (n : acc)
           | i > k  = merging' zs t (k + 1) (0 : acc)
         count = length xs
