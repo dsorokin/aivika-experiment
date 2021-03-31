@@ -65,9 +65,9 @@ library
                      aivika >= 5.9.1,
                      aivika-transformers >= 5.9.1
 
-    extensions:      MultiParamTypeClasses,
-                     FlexibleContexts,
-                     TypeFamilies
+    other-extensions:   MultiParamTypeClasses,
+                        FlexibleContexts,
+                        TypeFamilies
                      
     ghc-options:     -O2
 
